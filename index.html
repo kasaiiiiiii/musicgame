@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AETHER BEATS: Standalone Edition</title>
+    <title>AETHER BEATS: Web Edition V15</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
@@ -141,7 +141,7 @@
                 
                 <div class="text-center mb-4 md:mb-6">
                     <h1 class="text-3xl md:text-6xl font-black mb-1" style="color: var(--copper); text-shadow: 0 0 15px var(--neon-orange);">AETHER BEATS</h1>
-                    <p class="text-[10px] md:text-sm text-cyan-500 tracking-[0.4em] font-mono">STANDALONE EDITION - <span class="text-green-400">LOCAL SAVE ACTIVE</span></p>
+                    <p class="text-[10px] md:text-sm text-cyan-500 tracking-[0.4em] font-mono">SYSTEM UPDATE V15</p>
                 </div>
 
                 <div class="flex flex-col md:flex-row gap-4 md:gap-6 flex-grow overflow-hidden">
@@ -188,13 +188,14 @@
                             </div>
                         </div>
 
-                        <!-- ローカルハイスコア -->
+                        <!-- ランキング (新規追加) -->
                         <div class="mb-4 bg-black/60 border border-gray-800 rounded p-3 flex-grow">
                             <h2 class="text-xs text-gray-400 font-mono mb-2 flex justify-between items-end border-b border-gray-800 pb-1">
-                                <span>3. LOCAL RECORD</span>
+                                <span>3. LEADERBOARD</span>
                                 <span id="leaderboard-diff" class="text-sm font-bold tracking-wider">---</span>
                             </h2>
                             <div id="leaderboard-list" class="space-y-1.5 font-mono text-sm mt-2">
+                                <!-- JSでスコアリストを生成 -->
                                 <div class="text-center text-gray-600 text-xs py-2">SELECT A TRACK</div>
                             </div>
                         </div>
@@ -234,7 +235,8 @@
         <div id="result-screen" class="absolute inset-0 flex flex-col items-center justify-center hidden pointer-events-auto bg-black/95 backdrop-blur-lg z-40">
             <h2 class="text-5xl md:text-7xl font-black mb-2 text-orange-500" style="text-shadow: 0 0 30px var(--neon-orange);">TRACK COMPLETE</h2>
             
-            <p id="result-highscore-msg" class="text-yellow-400 font-bold text-xl md:text-2xl mb-6 hidden animate-pulse font-mono tracking-widest" style="text-shadow: 0 0 10px yellow;">★ NEW RECORD SAVED ★</p>
+            <!-- 自己ベスト更新表示 -->
+            <p id="result-highscore-msg" class="text-yellow-400 font-bold text-xl md:text-2xl mb-6 hidden animate-pulse font-mono tracking-widest" style="text-shadow: 0 0 10px yellow;">★ NEW RECORD!! ★</p>
             
             <p id="result-track-name" class="text-2xl md:text-3xl font-bold text-cyan-300 mb-8 truncate max-w-2xl px-4">Track Name</p>
             
@@ -256,91 +258,10 @@
     <div id="judge-container"></div>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- ローカルデータ保存ロジック -->
     <script>
-        const STORAGE_KEY = 'aether_beats_local_scores';
-        let localScores = [];
-
-        // 起動時に保存されたデータを読み込む
-        function loadLocalScores() {
-            try {
-                const data = localStorage.getItem(STORAGE_KEY);
-                if (data) localScores = JSON.parse(data);
-            } catch(e) { console.error("データ読み込みエラー", e); }
-        }
-
-        // スコアを保存する
-        function saveScore(trackId, diff, score) {
-            if (score <= 0) return false;
-            
-            // 現在のハイスコアを確認
-            const trackScores = localScores.filter(s => s.trackId === trackId && s.diff === diff);
-            const isNewRecord = trackScores.length === 0 || score > trackScores[0].score;
-
-            if (isNewRecord) {
-                // 同じ曲・難易度の古いスコアを削除して新しいものを追加
-                localScores = localScores.filter(s => !(s.trackId === trackId && s.diff === diff));
-                localScores.push({
-                    trackId: trackId,
-                    diff: diff,
-                    score: score,
-                    timestamp: Date.now()
-                });
-                try {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(localScores));
-                } catch(e) { console.error("保存容量エラー", e); }
-            }
-            return isNewRecord;
-        }
-
-        // スコア表示の更新
-        function updateLeaderboardDisplay() {
-            if (!state.selectedTrack) return;
-            
-            const diffDisplay = document.getElementById('leaderboard-diff');
-            diffDisplay.textContent = state.currentDiff.toUpperCase();
-            
-            const colors = { easy: 'text-[#00ff88]', normal: 'text-[#00f3ff]', hard: 'text-[#ffaa00]', expert: 'text-[#ff0044]' };
-            diffDisplay.className = `text-sm font-bold tracking-wider ${colors[state.currentDiff]}`;
-
-            const listEl = document.getElementById('leaderboard-list');
-            listEl.innerHTML = '';
-            
-            const record = localScores.find(s => s.trackId === state.selectedTrack.id && s.diff === state.currentDiff);
-            
-            if (!record) {
-                listEl.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">NO RECORD YET</div>';
-                return;
-            }
-            
-            const row = document.createElement('div');
-            row.className = `flex justify-between items-center border-b border-gray-800/50 pb-1 pt-2 text-yellow-400 font-bold`;
-            
-            const rankSpan = document.createElement('span');
-            rankSpan.className = "w-20 flex-shrink-0 text-xs md:text-sm";
-            rankSpan.innerHTML = `👑 BEST`;
-            
-            const dateSpan = document.createElement('span');
-            const date = new Date(record.timestamp);
-            dateSpan.textContent = `${date.getMonth()+1}/${date.getDate()}`;
-            dateSpan.className = "flex-grow text-[10px] md:text-xs text-gray-500 text-center px-2";
-
-            const scoreSpan = document.createElement('span');
-            scoreSpan.className = "w-20 flex-shrink-0 text-right font-bold text-sm md:text-base text-cyan-400";
-            scoreSpan.textContent = record.score.toString().padStart(7, '0');
-            
-            row.appendChild(rankSpan);
-            row.appendChild(dateSpan);
-            row.appendChild(scoreSpan);
-            listEl.appendChild(row);
-        }
-
-        loadLocalScores();
-    </script>
-
-    <!-- ゲームロジック -->
-    <script>
-        // 曲リスト (MusicsフォルダとImagesフォルダをGitHubの同じ場所に配置してください)
+        // ==========================================
+        // プレイリスト
+        // ==========================================
         const PLAYLIST = [
             {
                 id: "track_01",
@@ -354,7 +275,47 @@
             }
         ];
 
-        // 疑似乱数生成器
+        // --- LocalStorage 保存用キー ---
+        const STORAGE_KEY = 'aether_beats_scores_v1';
+
+        // --- スコア取得処理 ---
+        function getScores(trackId, diff) {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                let data = raw ? JSON.parse(raw) : {};
+                if (!data[trackId]) return [];
+                if (!data[trackId][diff]) return [];
+                return data[trackId][diff];
+            } catch (e) {
+                console.warn("Could not read from localStorage", e);
+                return [];
+            }
+        }
+
+        // --- スコア保存処理 ---
+        function saveScore(trackId, diff, score) {
+            if (score <= 0) return; // 0点は保存しない
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                let data = raw ? JSON.parse(raw) : {};
+                if (!data[trackId]) data[trackId] = {};
+                if (!data[trackId][diff]) data[trackId][diff] = [];
+                
+                let scores = data[trackId][diff];
+                scores.push(Math.floor(score));
+                // 降順ソート
+                scores.sort((a, b) => b - a);
+                // 上位5件のみ保持
+                scores = scores.slice(0, 5);
+                
+                data[trackId][diff] = scores;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch (e) {
+                console.warn("Could not save to localStorage", e);
+            }
+        }
+
+        // --- 疑似乱数生成器 ---
         function cyrb128(str) {
             let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
             for (let i = 0, k; i < str.length; i++) {
@@ -376,6 +337,7 @@
 
         let seededRandom = Math.random;
 
+        // --- ゲーム設定 ---
         const config = {
             lanes: 4,
             keys: ['d', 'f', 'j', 'k'],
@@ -471,12 +433,55 @@
             });
         }
 
+        // --- ランキング表示の更新 ---
+        function updateLeaderboardDisplay() {
+            if (!state.selectedTrack) return;
+            
+            const diffDisplay = document.getElementById('leaderboard-diff');
+            diffDisplay.textContent = state.currentDiff.toUpperCase();
+            
+            // 難易度に応じた色を設定
+            const colors = {
+                easy: 'text-[#00ff88]', normal: 'text-[#00f3ff]', hard: 'text-[#ffaa00]', expert: 'text-[#ff0044]'
+            };
+            diffDisplay.className = `text-sm font-bold tracking-wider ${colors[state.currentDiff]}`;
+
+            const listEl = document.getElementById('leaderboard-list');
+            listEl.innerHTML = '';
+            
+            const scores = getScores(state.selectedTrack.id, state.currentDiff);
+            
+            if (scores.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">NO RECORDS YET</div>';
+                return;
+            }
+            
+            const ranks = ['1ST', '2ND', '3RD', '4TH', '5TH'];
+            scores.forEach((score, index) => {
+                const row = document.createElement('div');
+                const isFirst = index === 0;
+                row.className = `flex justify-between border-b border-gray-800/50 pb-1 pt-1 ${isFirst ? 'text-yellow-400 font-bold' : 'text-gray-400'}`;
+                
+                const rankSpan = document.createElement('span');
+                rankSpan.textContent = ranks[index];
+                if (isFirst) rankSpan.innerHTML = `👑 ${ranks[index]}`; // 1位に王冠アイコン
+                
+                const scoreSpan = document.createElement('span');
+                scoreSpan.textContent = score.toString().padStart(7, '0');
+                
+                row.appendChild(rankSpan);
+                row.appendChild(scoreSpan);
+                listEl.appendChild(row);
+            });
+        }
+
         function setDifficulty(diff) {
             state.currentDiff = diff;
             ['easy', 'normal', 'hard', 'expert'].forEach(id => {
                 const el = document.getElementById(`diff-${id}`);
                 if (el) el.classList.toggle('active', id === diff);
             });
+            // 難易度変更時にランキングを再描画
             if (state.selectedTrack) updateLeaderboardDisplay();
         }
 
@@ -492,6 +497,8 @@
             statusEl.className = "text-xs font-mono mt-1 text-orange-400"; startBtn.textContent = "PROCESSING...";
 
             state.selectedTrack = track;
+            
+            // 曲選択時にランキングを更新
             updateLeaderboardDisplay();
 
             const jacketImg = document.getElementById('jacket-image');
@@ -595,12 +602,17 @@
             document.getElementById('result-score').textContent = finalScore.toString().padStart(7, '0');
             document.getElementById('result-combo').textContent = state.maxCombo;
             
+            // スコア保存と自己ベスト判定
+            const prevScores = getScores(state.selectedTrack.id, state.currentDiff);
+            const isNewRecord = (prevScores.length === 0 || finalScore > prevScores[0]) && finalScore > 0;
+            
+            saveScore(state.selectedTrack.id, state.currentDiff, finalScore);
+            
             const msgEl = document.getElementById('result-highscore-msg');
-            msgEl.classList.add('hidden');
-
-            const isNewRecord = saveScore(state.selectedTrack.id, state.currentDiff, finalScore);
             if (isNewRecord) {
                 msgEl.classList.remove('hidden');
+            } else {
+                msgEl.classList.add('hidden');
             }
             
             document.getElementById('result-screen').classList.remove('hidden');
@@ -610,6 +622,8 @@
             if (state.source) { try { state.source.stop(); } catch(e){} }
             state.isPlaying = false;
             document.getElementById('result-screen').classList.add('hidden');
+            
+            // メニューに戻る際、最新のランキングを再描画
             updateLeaderboardDisplay();
             document.getElementById('menu-container').classList.remove('hidden');
         }
