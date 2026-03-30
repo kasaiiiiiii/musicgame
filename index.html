@@ -258,76 +258,88 @@
     <div id="judge-container"></div>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Firebase SDK (クラウド保存用モジュール) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <!-- ワールドランキング用ストレージ (window.storage shared mode) -->
+    <script>
+        window.currentUserUid = null;
+        window.rankingReady = false;
+        window._boardCache = {};
 
-        let firebaseConfig = {};
-        try {
-            if (typeof __firebase_config !== 'undefined') {
-                firebaseConfig = JSON.parse(__firebase_config);
-            }
-        } catch (e) {
-            console.error("Firebase config error:", e);
+        // ストレージキー生成 (特殊文字を除去)
+        function makeBoardKey(trackId, diff) {
+            const safe = (String(trackId) + '-' + String(diff))
+                .replace(/[\s\/\\'"\(\)\[\]\{\}]/g, '-')
+                .replace(/-+/g, '-')
+                .substring(0, 160);
+            return 'board-' + safe;
         }
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        window.cloudScores = [];
-        window.currentUserUid = null;
-
-        const initAuth = async () => {
+        // 共有ストレージからランキングを読み込む
+        async function loadBoard(key) {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (e) {
-                console.error("Authentication failed:", e);
-            }
-        };
+                const r = await window.storage.get(key, true);
+                if (r && r.value) return JSON.parse(r.value);
+            } catch(e) { console.warn('loadBoard:', e); }
+            return [];
+        }
 
-        initAuth();
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                window.currentUserUid = user.uid;
-                const scoresRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-                
-                // オンラインのスコアデータをリアルタイムで受信
-                onSnapshot(scoresRef, (snapshot) => {
-                    window.cloudScores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    
-                    if (typeof window.updateLeaderboardDisplay === 'function') {
-                        window.updateLeaderboardDisplay();
-                    }
-                }, (error) => {
-                    console.error("Error fetching online scores:", error);
-                });
-            }
-        });
-
+        // スコアを共有ストレージに保存
         window.saveScoreToCloud = async function(trackId, diff, score) {
             if (!window.currentUserUid || score <= 0) return;
+            const key = makeBoardKey(trackId, diff);
+            let board = await loadBoard(key);
+
+            const idx = board.findIndex(s => s.userId === window.currentUserUid);
+            if (idx !== -1) {
+                // 同じプレイヤーのスコアが既にある場合、高い方のみ保持
+                if (score > board[idx].score) {
+                    board[idx] = { userId: window.currentUserUid, score, ts: Date.now() };
+                }
+            } else {
+                board.push({ userId: window.currentUserUid, score, ts: Date.now() });
+            }
+
+            board.sort((a, b) => b.score - a.score);
+            board = board.slice(0, 10); // 上位10件を保持
+
             try {
-                const scoresRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-                await addDoc(scoresRef, {
-                    trackId: trackId,
-                    diff: diff,
-                    score: score,
-                    userId: window.currentUserUid,
-                    timestamp: Date.now()
-                });
-            } catch (e) {
-                console.error("Failed to save score:", e);
+                await window.storage.set(key, JSON.stringify(board), true);
+                window._boardCache[key] = board;
+            } catch(e) {
+                console.error('スコア保存エラー:', e);
+            }
+
+            if (typeof window.updateLeaderboardDisplay === 'function') {
+                window.updateLeaderboardDisplay();
             }
         };
+
+        // ランキングシステムの初期化 (ユーザーID生成)
+        (async function initRankingSystem() {
+            try {
+                if (!window.storage) throw new Error('window.storage is not available');
+                
+                // ユーザーID取得 or 生成
+                try {
+                    const r = await window.storage.get('myUserId');
+                    window.currentUserUid = r ? r.value : null;
+                } catch(e) { window.currentUserUid = null; }
+
+                if (!window.currentUserUid) {
+                    window.currentUserUid = 'P' + Date.now().toString(36).toUpperCase()
+                        + Math.random().toString(36).substr(2, 5).toUpperCase();
+                    try { await window.storage.set('myUserId', window.currentUserUid); } catch(e) {}
+                }
+
+                window.rankingReady = true;
+            } catch(e) {
+                console.warn('ランキングシステム初期化エラー (window.storage未対応環境):', e);
+                window.rankingReady = false;
+            }
+
+            if (typeof window.updateLeaderboardDisplay === 'function') {
+                window.updateLeaderboardDisplay();
+            }
+        })();
     </script>
 
     <script>
@@ -347,28 +359,12 @@
             }
         ];
 
-        // --- スコア取得処理 (クラウド版) ---
-        function getScores(trackId, diff) {
-            if (!window.cloudScores) return [];
-            
-            // 該当する曲と難易度で絞り込み
-            const filtered = window.cloudScores.filter(s => s.trackId === trackId && s.diff === diff);
-            
-            // スコアの降順にソート
-            filtered.sort((a, b) => b.score - a.score);
-            
-            // 各プレイヤーごとの最高スコアのみを抽出 (重複防止)
-            const uniqueUserScores = [];
-            const seenUsers = new Set();
-            
-            for (const s of filtered) {
-                if (!seenUsers.has(s.userId)) {
-                    seenUsers.add(s.userId);
-                    uniqueUserScores.push(s);
-                }
-            }
-            
-            return uniqueUserScores.slice(0, 5); // 上位5件
+        // --- スコア取得処理 (window.storage 共有版) ---
+        async function getScores(trackId, diff) {
+            const key = makeBoardKey(trackId, diff);
+            const board = await loadBoard(key);
+            window._boardCache[key] = board;
+            return board.slice(0, 5); // 上位5件を返す
         }
 
         // --- 疑似乱数生成器 ---
@@ -489,8 +485,8 @@
             });
         }
 
-        // --- ランキング表示の更新 (グローバル対応版) ---
-        window.updateLeaderboardDisplay = function() {
+        // --- ランキング表示の更新 (ワールドランキング版) ---
+        window.updateLeaderboardDisplay = async function() {
             if (!state.selectedTrack) return;
             
             const diffDisplay = document.getElementById('leaderboard-diff');
@@ -502,12 +498,19 @@
             diffDisplay.className = `text-sm font-bold tracking-wider ${colors[state.currentDiff]}`;
 
             const listEl = document.getElementById('leaderboard-list');
+
+            if (!window.rankingReady) {
+                listEl.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">⏳ CONNECTING...</div>';
+                return;
+            }
+
+            listEl.innerHTML = '<div class="text-center text-gray-500 text-xs py-2">⏳ LOADING...</div>';
+            
+            const scores = await getScores(state.selectedTrack.id, state.currentDiff);
             listEl.innerHTML = '';
             
-            const scores = getScores(state.selectedTrack.id, state.currentDiff);
-            
             if (scores.length === 0) {
-                listEl.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">NO RECORDS YET</div>';
+                listEl.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">NO RECORDS YET<br><span class="text-[10px] text-gray-600">Be the first!</span></div>';
                 return;
             }
             
@@ -515,27 +518,27 @@
             scores.forEach((entry, index) => {
                 const row = document.createElement('div');
                 const isFirst = index === 0;
-                row.className = `flex justify-between items-center border-b border-gray-800/50 pb-1 pt-1 ${isFirst ? 'text-yellow-400 font-bold' : 'text-gray-400'}`;
+                const isMe = entry.userId && entry.userId === window.currentUserUid;
+                row.className = `flex justify-between items-center border-b border-gray-800/50 pb-1 pt-1 ${isFirst ? 'text-yellow-400 font-bold' : isMe ? 'text-cyan-300 font-bold' : 'text-gray-400'}`;
                 
                 const rankSpan = document.createElement('span');
-                rankSpan.className = "w-10";
-                rankSpan.textContent = ranks[index];
+                rankSpan.className = "w-10 shrink-0";
+                rankSpan.textContent = ranks[index] || `${index+1}TH`;
                 if (isFirst) rankSpan.innerHTML = `👑 ${ranks[index]}`;
                 
                 const userSpan = document.createElement('span');
-                userSpan.className = "flex-grow text-[10px] md:text-xs text-gray-500 text-center";
-                
-                // 自分のスコアかどうかで表示を分ける
-                if (entry.userId && entry.userId === window.currentUserUid) {
-                    userSpan.textContent = "YOU";
+                if (isMe) {
+                    userSpan.textContent = "★ YOU";
                     userSpan.className = "flex-grow text-[10px] md:text-xs text-cyan-400 text-center font-bold";
                 } else {
-                    const displayId = entry.userId ? entry.userId.substring(entry.userId.length - 5) : "ANON";
-                    userSpan.textContent = `PLAYER-${displayId}`;
+                    const raw = entry.userId || "ANON";
+                    const displayId = raw.substring(Math.max(0, raw.length - 6));
+                    userSpan.textContent = `ID-${displayId}`;
+                    userSpan.className = "flex-grow text-[10px] md:text-xs text-gray-500 text-center";
                 }
 
                 const scoreSpan = document.createElement('span');
-                scoreSpan.className = "w-16 text-right font-bold";
+                scoreSpan.className = "w-16 text-right font-bold shrink-0";
                 scoreSpan.textContent = entry.score.toString().padStart(7, '0');
                 
                 row.appendChild(rankSpan);
@@ -672,21 +675,21 @@
             document.getElementById('result-score').textContent = finalScore.toString().padStart(7, '0');
             document.getElementById('result-combo').textContent = state.maxCombo;
             
-            // クラウドにスコアを保存
-            if (window.saveScoreToCloud) {
-                window.saveScoreToCloud(state.selectedTrack.id, state.currentDiff, finalScore);
-            }
-            
-            // 自分の過去のスコアから自己ベスト判定
-            const myScores = window.cloudScores ? window.cloudScores.filter(s => s.trackId === state.selectedTrack.id && s.diff === state.currentDiff && s.userId === window.currentUserUid) : [];
-            myScores.sort((a, b) => b.score - a.score);
-            const isNewRecord = (myScores.length === 0 || finalScore > myScores[0].score) && finalScore > 0;
-            
             const msgEl = document.getElementById('result-highscore-msg');
-            if (isNewRecord) {
-                msgEl.classList.remove('hidden');
-            } else {
-                msgEl.classList.add('hidden');
+            msgEl.classList.add('hidden');
+
+            // クラウドにスコアを保存して自己ベスト判定
+            if (window.saveScoreToCloud && finalScore > 0) {
+                (async () => {
+                    // 保存前の自己ベストを確認
+                    const currentScores = await getScores(state.selectedTrack.id, state.currentDiff);
+                    const myBest = currentScores.find(s => s.userId === window.currentUserUid);
+                    const isNewRecord = !myBest || finalScore > myBest.score;
+                    
+                    await window.saveScoreToCloud(state.selectedTrack.id, state.currentDiff, finalScore);
+                    
+                    if (isNewRecord) msgEl.classList.remove('hidden');
+                })();
             }
             
             document.getElementById('result-screen').classList.remove('hidden');
@@ -698,7 +701,7 @@
             document.getElementById('result-screen').classList.add('hidden');
             
             // メニューに戻る際、最新のランキングを再描画
-            updateLeaderboardDisplay();
+            if (state.selectedTrack) updateLeaderboardDisplay();
             document.getElementById('menu-container').classList.remove('hidden');
         }
 
