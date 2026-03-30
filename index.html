@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AETHER BEATS: Web Edition V17</title>
+    <title>AETHER BEATS: Web Edition V18</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
@@ -148,7 +148,7 @@
                 
                 <div class="text-center mb-4 md:mb-6">
                     <h1 class="text-3xl md:text-6xl font-black mb-1" style="color: var(--copper); text-shadow: 0 0 15px var(--neon-orange);">AETHER BEATS</h1>
-                    <p class="text-[10px] md:text-sm text-cyan-500 tracking-[0.4em] font-mono">SYSTEM UPDATE V17 - <span id="db-status" class="text-gray-500">CONNECTING...</span></p>
+                    <p class="text-[10px] md:text-sm text-cyan-500 tracking-[0.4em] font-mono">SYSTEM UPDATE V18 - <span id="db-status" class="text-gray-500">INITIALIZING...</span></p>
                 </div>
 
                 <div class="flex flex-col md:flex-row gap-4 md:gap-6 flex-grow overflow-hidden">
@@ -198,11 +198,10 @@
                         <!-- ランキング -->
                         <div class="mb-4 bg-black/60 border border-gray-800 rounded p-3 flex-grow">
                             <h2 class="text-xs text-gray-400 font-mono mb-2 flex justify-between items-end border-b border-gray-800 pb-1">
-                                <span>3. GLOBAL LEADERBOARD</span>
+                                <span>3. LEADERBOARD</span>
                                 <span id="leaderboard-diff" class="text-sm font-bold tracking-wider">---</span>
                             </h2>
                             <div id="leaderboard-list" class="space-y-1.5 font-mono text-sm mt-2">
-                                <!-- JSでスコアリストを生成 -->
                                 <div class="text-center text-gray-600 text-xs py-2">SELECT A TRACK</div>
                             </div>
                         </div>
@@ -243,7 +242,7 @@
             <h2 class="text-5xl md:text-7xl font-black mb-2 text-orange-500" style="text-shadow: 0 0 30px var(--neon-orange);">TRACK COMPLETE</h2>
             
             <!-- 自己ベスト更新表示 -->
-            <p id="result-highscore-msg" class="text-yellow-400 font-bold text-xl md:text-2xl mb-6 hidden animate-pulse font-mono tracking-widest" style="text-shadow: 0 0 10px yellow;">★ NEW RECORD SAVED TO CLOUD ★</p>
+            <p id="result-highscore-msg" class="text-yellow-400 font-bold text-xl md:text-2xl mb-6 hidden animate-pulse font-mono tracking-widest" style="text-shadow: 0 0 10px yellow;">★ NEW RECORD SAVED ★</p>
             
             <p id="result-track-name" class="text-2xl md:text-3xl font-bold text-cyan-300 mb-8 truncate max-w-2xl px-4">Track Name</p>
             
@@ -265,104 +264,141 @@
     <div id="judge-container"></div>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- データベース・クラウド連携ロジック -->
+    <!-- データベース・クラウド連携ロジック (ハイブリッド対応版) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        let firebaseConfig = {};
-        try {
-            if (typeof __firebase_config !== 'undefined') {
-                firebaseConfig = JSON.parse(__firebase_config);
-            }
-        } catch (e) {
-            console.error("Firebase config error:", e);
-        }
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // グローバル変数として保持
         window.cloudScores = [];
         window.currentUserUid = null;
         let unsubscribeSnapshot = null;
+        let isOnline = false;
+        let db = null;
+        let appId = 'default-app-id';
 
-        // 1. 認証処理
-        const initAuth = async () => {
+        function updateStatus(text, className) {
+            const el = document.getElementById('db-status');
+            if (el) { el.textContent = text; el.className = className; }
+        }
+
+        // --- ローカル保存用のフォールバック ---
+        function loadLocalScores() {
             try {
+                const localData = localStorage.getItem('aether_beats_scores_v18');
+                if (localData) {
+                    window.cloudScores = JSON.parse(localData);
+                } else {
+                    window.cloudScores = [];
+                }
+                if (typeof window.updateLeaderboardDisplay === 'function') window.updateLeaderboardDisplay();
+            } catch(e) { console.error(e); }
+        }
+
+        function saveLocalScore(trackId, diff, score) {
+            try {
+                const newScore = {
+                    id: 'local_' + Date.now(),
+                    trackId: trackId,
+                    diff: diff,
+                    score: score,
+                    userId: 'YOU (LOCAL)',
+                    timestamp: Date.now()
+                };
+                window.cloudScores.push(newScore);
+                localStorage.setItem('aether_beats_scores_v18', JSON.stringify(window.cloudScores));
+                if (typeof window.updateLeaderboardDisplay === 'function') window.updateLeaderboardDisplay();
+                return true;
+            } catch(e) { return false; }
+        }
+
+        // --- Firebase初期化 ---
+        async function initFirebase() {
+            try {
+                let firebaseConfig = null;
+                // AI環境が提供する変数があるか確認
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    firebaseConfig = JSON.parse(__firebase_config);
+                }
+
+                // APIキーが存在しない場合（ローカルでHTMLを直接開いた場合）はエラーを投げてオフラインモードへ移行
+                if (!firebaseConfig || !firebaseConfig.apiKey) {
+                    throw new Error("No API Key found. Switching to offline local mode.");
+                }
+
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                db = getFirestore(app);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                isOnline = true;
+
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
-            } catch (e) {
-                console.error("Authentication failed:", e);
-                document.getElementById('db-status').textContent = "OFFLINE";
-                document.getElementById('db-status').className = "text-red-500";
-            }
-        };
 
-        // 2. 認証状態の監視とデータ取得
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                window.currentUserUid = user.uid;
-                const dbStatusEl = document.getElementById('db-status');
-                dbStatusEl.textContent = "ONLINE DB CONNECTED";
-                dbStatusEl.className = "online-pulse font-bold";
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        window.currentUserUid = user.uid;
+                        updateStatus("ONLINE DB CONNECTED", "online-pulse font-bold text-[10px] md:text-xs");
 
-                const scoresRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-                
-                if (unsubscribeSnapshot) unsubscribeSnapshot();
-                
-                // スコアのリアルタイム監視
-                unsubscribeSnapshot = onSnapshot(scoresRef, (snapshot) => {
-                    window.cloudScores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    
-                    // スコアが更新されたらUIを再描画
-                    if (typeof window.updateLeaderboardDisplay === 'function') {
-                        window.updateLeaderboardDisplay();
+                        const scoresRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
+                        if (unsubscribeSnapshot) unsubscribeSnapshot();
+                        
+                        // クラウドからデータ受信
+                        unsubscribeSnapshot = onSnapshot(scoresRef, (snapshot) => {
+                            window.cloudScores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            if (typeof window.updateLeaderboardDisplay === 'function') window.updateLeaderboardDisplay();
+                        }, (error) => {
+                            console.error("DB Sync Error:", error);
+                            updateStatus("SYNC ERROR (LOCAL MODE)", "text-orange-500 font-bold");
+                            isOnline = false;
+                            loadLocalScores();
+                        });
+                    } else {
+                        window.currentUserUid = null;
                     }
-                }, (error) => {
-                    console.error("Error fetching online scores:", error);
-                    dbStatusEl.textContent = "SYNC ERROR";
-                    dbStatusEl.className = "text-red-500";
                 });
-            } else {
-                window.currentUserUid = null;
-                if (unsubscribeSnapshot) unsubscribeSnapshot();
-            }
-        });
 
-        // 3. スコア保存関数
+            } catch (error) {
+                // エラー時（ローカル実行時など）はオフラインモードとしてLocalStorageを使用
+                console.warn(error.message);
+                updateStatus("OFFLINE (LOCAL SAVE MODE)", "text-orange-400 font-bold text-[10px] md:text-xs");
+                isOnline = false;
+                window.currentUserUid = "YOU (LOCAL)";
+                loadLocalScores();
+            }
+        }
+
+        // --- 共通のスコア保存関数 ---
         window.saveScoreToCloud = async function(trackId, diff, score) {
-            if (!window.currentUserUid || score <= 0) return false;
-            try {
-                const scoresRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-                await addDoc(scoresRef, {
-                    trackId: trackId,
-                    diff: diff,
-                    score: score,
-                    userId: window.currentUserUid,
-                    timestamp: Date.now()
-                });
-                return true;
-            } catch (e) {
-                console.error("Failed to save score:", e);
-                return false;
+            if (score <= 0) return false;
+            
+            // オンライン環境であればクラウドへ保存
+            if (isOnline && db && window.currentUserUid) {
+                try {
+                    const scoresRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
+                    await addDoc(scoresRef, {
+                        trackId: trackId, diff: diff, score: score,
+                        userId: window.currentUserUid, timestamp: Date.now()
+                    });
+                    return true;
+                } catch (e) {
+                    console.error("Cloud save failed, falling back to local:", e);
+                    return saveLocalScore(trackId, diff, score);
+                }
+            } else {
+                // オフライン環境ならローカルへ保存
+                return saveLocalScore(trackId, diff, score);
             }
         };
 
-        initAuth();
+        initFirebase();
     </script>
 
     <!-- ゲームロジック -->
     <script>
-        // ==========================================
-        // プレイリスト
-        // ==========================================
         const PLAYLIST = [
             {
                 id: "track_01",
@@ -376,31 +412,24 @@
             }
         ];
 
-        // --- スコア取得処理 (クラウド版) ---
+        // スコア取得処理
         function getScores(trackId, diff) {
             if (!window.cloudScores || window.cloudScores.length === 0) return [];
-            
-            // 該当する曲と難易度で絞り込み
             const filtered = window.cloudScores.filter(s => s.trackId === trackId && s.diff === diff);
-            
-            // スコアの降順にソート
             filtered.sort((a, b) => b.score - a.score);
             
-            // 各プレイヤーごとの最高スコアのみを抽出 (重複防止)
             const uniqueUserScores = [];
             const seenUsers = new Set();
-            
             for (const s of filtered) {
                 if (!seenUsers.has(s.userId)) {
                     seenUsers.add(s.userId);
                     uniqueUserScores.push(s);
                 }
             }
-            
-            return uniqueUserScores.slice(0, 5); // 上位5件
+            return uniqueUserScores.slice(0, 5);
         }
 
-        // --- 疑似乱数生成器 ---
+        // 疑似乱数生成器
         function cyrb128(str) {
             let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
             for (let i = 0, k; i < str.length; i++) {
@@ -422,7 +451,6 @@
 
         let seededRandom = Math.random;
 
-        // --- ゲーム設定 ---
         const config = {
             lanes: 4,
             keys: ['d', 'f', 'j', 'k'],
@@ -518,16 +546,14 @@
             });
         }
 
-        // --- ランキング表示の更新 (グローバル対応版) ---
+        // ランキング表示の更新
         window.updateLeaderboardDisplay = function() {
             if (!state.selectedTrack) return;
             
             const diffDisplay = document.getElementById('leaderboard-diff');
             diffDisplay.textContent = state.currentDiff.toUpperCase();
             
-            const colors = {
-                easy: 'text-[#00ff88]', normal: 'text-[#00f3ff]', hard: 'text-[#ffaa00]', expert: 'text-[#ff0044]'
-            };
+            const colors = { easy: 'text-[#00ff88]', normal: 'text-[#00f3ff]', hard: 'text-[#ffaa00]', expert: 'text-[#ff0044]' };
             diffDisplay.className = `text-sm font-bold tracking-wider ${colors[state.currentDiff]}`;
 
             const listEl = document.getElementById('leaderboard-list');
@@ -553,14 +579,13 @@
                 
                 const userSpan = document.createElement('span');
                 
-                // 自分のスコアかどうかで表示を分ける。指示通り完全なIDを表示する。
                 if (entry.userId && entry.userId === window.currentUserUid) {
-                    userSpan.textContent = "YOU (" + entry.userId + ")";
-                    userSpan.className = "flex-grow text-[8px] md:text-[10px] text-cyan-400 text-center font-bold truncate px-2";
+                    userSpan.textContent = "YOU";
+                    userSpan.className = "flex-grow text-[10px] md:text-xs text-cyan-400 text-center font-bold truncate px-2";
                 } else {
                     const displayId = entry.userId ? entry.userId : "ANONYMOUS";
                     userSpan.textContent = displayId;
-                    userSpan.className = "flex-grow text-[8px] md:text-[10px] text-gray-500 text-center truncate px-2";
+                    userSpan.className = "flex-grow text-[10px] md:text-xs text-gray-500 text-center truncate px-2";
                 }
 
                 const scoreSpan = document.createElement('span');
@@ -580,7 +605,6 @@
                 const el = document.getElementById(`diff-${id}`);
                 if (el) el.classList.toggle('active', id === diff);
             });
-            // 難易度変更時にランキングを再描画
             if (state.selectedTrack) window.updateLeaderboardDisplay();
         }
 
@@ -596,8 +620,6 @@
             statusEl.className = "text-xs font-mono mt-1 text-orange-400"; startBtn.textContent = "PROCESSING...";
 
             state.selectedTrack = track;
-            
-            // 曲選択時にランキングを更新
             window.updateLeaderboardDisplay();
 
             const jacketImg = document.getElementById('jacket-image');
@@ -704,9 +726,7 @@
             const msgEl = document.getElementById('result-highscore-msg');
             msgEl.classList.add('hidden');
 
-            // クラウドにスコアを保存
             if (window.saveScoreToCloud && finalScore > 0) {
-                // 自分の過去のスコアから自己ベスト判定
                 const myScores = window.cloudScores ? window.cloudScores.filter(s => s.trackId === state.selectedTrack.id && s.diff === state.currentDiff && s.userId === window.currentUserUid) : [];
                 myScores.sort((a, b) => b.score - a.score);
                 const isNewRecord = (myScores.length === 0 || finalScore > myScores[0].score);
@@ -725,8 +745,6 @@
             if (state.source) { try { state.source.stop(); } catch(e){} }
             state.isPlaying = false;
             document.getElementById('result-screen').classList.add('hidden');
-            
-            // メニューに戻る際、最新のランキングを再描画
             window.updateLeaderboardDisplay();
             document.getElementById('menu-container').classList.remove('hidden');
         }
