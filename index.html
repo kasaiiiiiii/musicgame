@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AETHER BEATS: Web Edition V13</title>
+    <title>AETHER BEATS: Web Edition V14</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
@@ -141,6 +141,14 @@
 </head>
 <body>
 
+    <!-- 常に最前面に表示される設定ボタン (z-index: 45) -->
+    <button onclick="openSettings()" class="absolute top-4 right-4 md:top-6 md:right-6 z-[45] pointer-events-auto text-[var(--copper)] hover:text-[var(--neon-cyan)] transition-all p-2 rounded-full bg-black/50 backdrop-blur-sm border border-[var(--copper)] hover:shadow-[0_0_15px_var(--neon-cyan)]">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+    </button>
+
     <div id="ui-layer" class="p-4 md:p-6 flex flex-col justify-between">
         <!-- HUD -->
         <div class="flex justify-between items-start">
@@ -149,28 +157,22 @@
                 <div id="score-display" class="text-3xl md:text-5xl font-bold score-glow">0000000</div>
             </div>
             
-            <div class="flex items-start gap-4 md:gap-8">
+            <!-- 設定ボタンと被らないように右にマージンを追加 -->
+            <div class="flex items-start mr-14 md:mr-20">
                 <div class="text-right">
                     <div class="text-xs md:text-sm text-gray-400 font-mono">CHAIN COMBO</div>
                     <div id="combo-display" class="text-3xl md:text-5xl font-bold hud-text">0</div>
                 </div>
-                <!-- 設定メニューボタン -->
-                <button onclick="openSettings()" class="pointer-events-auto text-[var(--copper)] hover:text-[var(--neon-cyan)] transition-colors p-2 rounded-full hover:bg-black/50 mt-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 md:h-10 md:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </button>
             </div>
         </div>
 
-        <!-- Main Menu -->
+        <!-- Main Menu (z-index: 40) -->
         <div id="menu-container" class="absolute inset-0 flex items-center justify-center pointer-events-auto bg-black/80 backdrop-blur-sm z-40 p-4">
             <div class="bg-[var(--bg-panel)] p-6 md:p-8 border border-[var(--copper)] rounded-xl shadow-[0_0_40px_rgba(184,115,51,0.2)] w-full max-w-4xl flex flex-col max-h-[95vh]">
                 
                 <div class="text-center mb-6">
                     <h1 class="text-4xl md:text-6xl font-black mb-1" style="color: var(--copper); text-shadow: 0 0 15px var(--neon-orange);">AETHER BEATS</h1>
-                    <p class="text-xs md:text-sm text-cyan-500 tracking-[0.4em] font-mono">SYSTEM UPDATE V13</p>
+                    <p class="text-xs md:text-sm text-cyan-500 tracking-[0.4em] font-mono">SYSTEM UPDATE V14</p>
                 </div>
 
                 <div class="flex flex-col md:flex-row gap-6 flex-grow overflow-hidden">
@@ -230,7 +232,7 @@
             </div>
         </div>
 
-        <!-- Settings Modal -->
+        <!-- Settings Modal (z-index: 50) -->
         <div id="settings-modal" class="absolute inset-0 flex items-center justify-center hidden pointer-events-auto bg-black/80 backdrop-blur-md z-50 p-4">
             <div class="bg-[var(--bg-panel)] p-6 md:p-8 border-2 border-[var(--copper)] rounded-xl shadow-[0_0_40px_rgba(0,243,255,0.15)] w-full max-w-md relative">
                 
@@ -271,7 +273,7 @@
             </div>
         </div>
 
-        <!-- Result Screen -->
+        <!-- Result Screen (z-index: 40) -->
         <div id="result-screen" class="absolute inset-0 flex flex-col items-center justify-center hidden pointer-events-auto bg-black/95 backdrop-blur-lg z-40">
             <h2 class="text-5xl md:text-7xl font-black mb-4 text-orange-500" style="text-shadow: 0 0 30px var(--neon-orange);">TRACK COMPLETE</h2>
             
