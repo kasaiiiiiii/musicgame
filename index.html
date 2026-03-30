@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AETHER BEATS: Web Edition V11</title>
+    <title>AETHER BEATS: Web Edition V13</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
@@ -92,6 +92,29 @@
         #diff-hard.active { border-color: var(--diff-hard); box-shadow: 0 0 20px rgba(255,170,0,0.5); background: rgba(255,170,0,0.1); color: #fff; }
         #diff-expert.active { border-color: var(--diff-expert); box-shadow: 0 0 20px rgba(255,0,68,0.5); background: rgba(255,0,68,0.1); color: #fff; }
 
+        /* カスタムスライダー */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            width: 100%;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: var(--neon-cyan);
+            cursor: pointer;
+            margin-top: -7px;
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: var(--copper);
+            border-radius: 2px;
+        }
 
         @keyframes popOut {
             0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
@@ -125,19 +148,29 @@
                 <div class="text-xs md:text-sm text-gray-400 font-mono">SYSTEM SCORE</div>
                 <div id="score-display" class="text-3xl md:text-5xl font-bold score-glow">0000000</div>
             </div>
-            <div class="text-right">
-                <div class="text-xs md:text-sm text-gray-400 font-mono">CHAIN COMBO</div>
-                <div id="combo-display" class="text-3xl md:text-5xl font-bold hud-text">0</div>
+            
+            <div class="flex items-start gap-4 md:gap-8">
+                <div class="text-right">
+                    <div class="text-xs md:text-sm text-gray-400 font-mono">CHAIN COMBO</div>
+                    <div id="combo-display" class="text-3xl md:text-5xl font-bold hud-text">0</div>
+                </div>
+                <!-- 設定メニューボタン -->
+                <button onclick="openSettings()" class="pointer-events-auto text-[var(--copper)] hover:text-[var(--neon-cyan)] transition-colors p-2 rounded-full hover:bg-black/50 mt-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 md:h-10 md:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
             </div>
         </div>
 
         <!-- Main Menu -->
-        <div id="menu-container" class="absolute inset-0 flex items-center justify-center pointer-events-auto bg-black/80 backdrop-blur-sm z-50 p-4">
-            <div class="bg-[var(--bg-panel)] p-6 md:p-8 border border-[var(--copper)] rounded-xl shadow-[0_0_40px_rgba(184,115,51,0.2)] w-full max-w-4xl flex flex-col max-h-[90vh]">
+        <div id="menu-container" class="absolute inset-0 flex items-center justify-center pointer-events-auto bg-black/80 backdrop-blur-sm z-40 p-4">
+            <div class="bg-[var(--bg-panel)] p-6 md:p-8 border border-[var(--copper)] rounded-xl shadow-[0_0_40px_rgba(184,115,51,0.2)] w-full max-w-4xl flex flex-col max-h-[95vh]">
                 
                 <div class="text-center mb-6">
                     <h1 class="text-4xl md:text-6xl font-black mb-1" style="color: var(--copper); text-shadow: 0 0 15px var(--neon-orange);">AETHER BEATS</h1>
-                    <p class="text-xs md:text-sm text-cyan-500 tracking-[0.4em] font-mono">VISUAL UPDATE EDITION V11</p>
+                    <p class="text-xs md:text-sm text-cyan-500 tracking-[0.4em] font-mono">SYSTEM UPDATE V13</p>
                 </div>
 
                 <div class="flex flex-col md:flex-row gap-6 flex-grow overflow-hidden">
@@ -166,23 +199,20 @@
                     </div>
 
                     <!-- 右ペイン: 選択中の曲情報と設定 -->
-                    <div class="w-full md:w-1/2 flex flex-col justify-between">
+                    <div class="w-full md:w-1/2 flex flex-col justify-between overflow-y-auto pr-2">
                         
                         <!-- ジャケット画像 & トラック情報 -->
-                        <div class="bg-black/50 p-4 rounded-lg border border-gray-800 mb-4 flex-grow flex flex-col justify-center items-center relative">
-                            
-                            <!-- ジャケット画像コンテナ -->
-                            <div id="jacket-container" class="w-32 h-32 md:w-40 md:h-40 mb-4 rounded border-2 border-gray-700 bg-gray-900 flex flex-col justify-center items-center overflow-hidden shadow-[0_0_15px_rgba(0,0,0,0.5)] relative">
-                                <span id="no-image-text" class="text-gray-600 font-mono text-sm tracking-widest absolute">NO IMAGE</span>
+                        <div class="bg-black/50 p-4 rounded-lg border border-gray-800 mb-4 flex flex-col justify-center items-center relative min-h-[180px]">
+                            <div id="jacket-container" class="w-24 h-24 md:w-32 md:h-32 mb-3 rounded border-2 border-gray-700 bg-gray-900 flex flex-col justify-center items-center overflow-hidden shadow-[0_0_15px_rgba(0,0,0,0.5)] relative">
+                                <span id="no-image-text" class="text-gray-600 font-mono text-xs tracking-widest absolute">NO IMAGE</span>
                                 <img id="jacket-image" src="" alt="Jacket" class="w-full h-full object-cover hidden z-10 transition-opacity duration-300">
                             </div>
-
-                            <h3 id="selected-title" class="text-xl md:text-2xl font-bold text-center text-white truncate w-full px-2">TRACK NOT SELECTED</h3>
-                            <p id="selected-status" class="text-xs text-gray-500 font-mono mt-2">Awaiting Selection...</p>
+                            <h3 id="selected-title" class="text-lg md:text-xl font-bold text-center text-white truncate w-full px-2">TRACK NOT SELECTED</h3>
+                            <p id="selected-status" class="text-xs text-gray-500 font-mono mt-1">Awaiting Selection...</p>
                         </div>
 
                         <!-- 難易度設定 -->
-                        <div class="mb-4">
+                        <div class="mb-6">
                             <h2 class="text-xs text-gray-400 font-mono mb-2">2. DIFFICULTY</h2>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                                 <button onclick="setDifficulty('easy')" id="diff-easy" class="btn-steampunk py-2 text-sm rounded">EASY</button>
@@ -192,7 +222,7 @@
                             </div>
                         </div>
 
-                        <button id="start-btn" class="btn-steampunk w-full py-4 md:py-5 text-xl md:text-2xl font-bold tracking-widest rounded-lg" disabled>
+                        <button id="start-btn" class="btn-steampunk w-full py-4 text-xl md:text-2xl font-bold tracking-widest rounded-lg" disabled>
                             3. SYSTEM STANDBY
                         </button>
                     </div>
@@ -200,8 +230,49 @@
             </div>
         </div>
 
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="absolute inset-0 flex items-center justify-center hidden pointer-events-auto bg-black/80 backdrop-blur-md z-50 p-4">
+            <div class="bg-[var(--bg-panel)] p-6 md:p-8 border-2 border-[var(--copper)] rounded-xl shadow-[0_0_40px_rgba(0,243,255,0.15)] w-full max-w-md relative">
+                
+                <h2 class="text-3xl font-bold text-cyan-400 mb-8 font-mono text-center" style="text-shadow: 0 0 10px var(--neon-cyan);">SYSTEM SETTINGS</h2>
+                
+                <div class="space-y-8">
+                    <!-- Note Speed -->
+                    <div class="bg-black/40 p-4 rounded border border-gray-800">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm text-gray-300 font-mono">NOTE SPEED</span>
+                            <span id="speed-display" class="text-cyan-400 font-bold font-mono text-lg">x1.0</span>
+                        </div>
+                        <input type="range" id="speed-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+                    </div>
+
+                    <!-- BGM Volume -->
+                    <div class="bg-black/40 p-4 rounded border border-gray-800">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm text-gray-300 font-mono">BGM VOLUME</span>
+                            <span id="bgm-vol-display" class="text-cyan-400 font-bold font-mono text-lg">80%</span>
+                        </div>
+                        <input type="range" id="bgm-vol-slider" min="0" max="1" step="0.05" value="0.8">
+                    </div>
+
+                    <!-- SE Volume -->
+                    <div class="bg-black/40 p-4 rounded border border-gray-800">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm text-gray-300 font-mono">SE VOLUME <span class="text-gray-500 text-xs ml-2">(TAP SOUND)</span></span>
+                            <span id="se-vol-display" class="text-cyan-400 font-bold font-mono text-lg">80%</span>
+                        </div>
+                        <input type="range" id="se-vol-slider" min="0" max="1" step="0.05" value="0.8">
+                    </div>
+                </div>
+                
+                <button onclick="closeSettings()" class="btn-steampunk w-full py-4 mt-8 text-xl font-bold tracking-widest rounded-lg">
+                    APPLY & CLOSE
+                </button>
+            </div>
+        </div>
+
         <!-- Result Screen -->
-        <div id="result-screen" class="absolute inset-0 flex flex-col items-center justify-center hidden pointer-events-auto bg-black/95 backdrop-blur-lg z-50">
+        <div id="result-screen" class="absolute inset-0 flex flex-col items-center justify-center hidden pointer-events-auto bg-black/95 backdrop-blur-lg z-40">
             <h2 class="text-5xl md:text-7xl font-black mb-4 text-orange-500" style="text-shadow: 0 0 30px var(--neon-orange);">TRACK COMPLETE</h2>
             
             <p id="result-track-name" class="text-3xl font-bold text-cyan-300 mb-10 truncate max-w-2xl px-4">Track Name</p>
@@ -226,22 +297,15 @@
 
     <script>
         // ==========================================
-        // デフォルトで表示しておくプレイリスト
+        // プレイリスト
         // ==========================================
         const PLAYLIST = [
-            {
-                id: "track_01",
-                title: "春雷",
-                url: "./Musics/米津玄師 - 春雷   Kenshi Yonezu - Shunrai.mp3"  // GitHub上の相対パス
-            },
-            {
-                id: "track_02",
-                title: "爆発",
-                url: "./Musics/爆発2.mp3"
-            }
+            { id: "track_01", title: "サンプル楽曲1", url: "./Musics/sample1.mp3" },
+            { id: "track_02", title: "サンプル楽曲2", url: "./Musics/sample2.mp3" },
+            { id: "track_03", title: "カッコいいBGM", url: "./Musics/cool_bgm.wav" }
         ];
 
-        // --- 疑似乱数生成器 (固定譜面用) ---
+        // --- 疑似乱数生成器 ---
         function cyrb128(str) {
             let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
             for (let i = 0, k; i < str.length; i++) {
@@ -287,16 +351,25 @@
 
         let state = {
             currentDiff: 'normal',
+            speedMultiplier: 1.0,
+            bgmVolume: 0.8,
+            seVolume: 0.8,
+            isPaused: false,
+            
             selectedTrack: null,
             isPlaying: false,
             score: 0,
             combo: 0,
             maxCombo: 0,
             notes: [],
+            
             audioCtx: null,
+            bgmGainNode: null,
+            seGainNode: null,
             source: null,
             buffer: null,
             startTime: 0,
+            
             gears: [],
             particles: [],
             keyState: [false, false, false, false],
@@ -313,6 +386,7 @@
             initGears();
             setDifficulty('normal');
             renderTrackList();
+            setupSettings();
             requestAnimationFrame(gameLoop);
         };
 
@@ -321,6 +395,110 @@
             canvas.height = window.innerHeight;
         }
 
+        // --- AudioContext と Node の初期化 ---
+        async function initAudioContext() {
+            if (!state.audioCtx) {
+                state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // ボリュームコントロール用ノードを作成
+                state.bgmGainNode = state.audioCtx.createGain();
+                state.seGainNode = state.audioCtx.createGain();
+                
+                state.bgmGainNode.connect(state.audioCtx.destination);
+                state.seGainNode.connect(state.audioCtx.destination);
+                
+                // 初期音量を反映
+                state.bgmGainNode.gain.value = state.bgmVolume;
+                state.seGainNode.gain.value = state.seVolume;
+            }
+            // ポーズ中でなければ再開
+            if (state.audioCtx.state === 'suspended' && !state.isPaused) {
+                await state.audioCtx.resume();
+            }
+        }
+
+        // --- 設定メニュー関連 ---
+        function setupSettings() {
+            // Speed
+            const speedSlider = document.getElementById('speed-slider');
+            const speedDisplay = document.getElementById('speed-display');
+            speedSlider.addEventListener('input', (e) => {
+                state.speedMultiplier = parseFloat(e.target.value);
+                speedDisplay.textContent = `x${state.speedMultiplier.toFixed(1)}`;
+            });
+
+            // BGM Volume
+            const bgmSlider = document.getElementById('bgm-vol-slider');
+            const bgmDisplay = document.getElementById('bgm-vol-display');
+            bgmSlider.addEventListener('input', (e) => {
+                state.bgmVolume = parseFloat(e.target.value);
+                bgmDisplay.textContent = Math.round(state.bgmVolume * 100) + '%';
+                if (state.bgmGainNode) {
+                    state.bgmGainNode.gain.value = state.bgmVolume;
+                }
+            });
+
+            // SE Volume
+            const seSlider = document.getElementById('se-vol-slider');
+            const seDisplay = document.getElementById('se-vol-display');
+            seSlider.addEventListener('input', (e) => {
+                state.seVolume = parseFloat(e.target.value);
+                seDisplay.textContent = Math.round(state.seVolume * 100) + '%';
+                if (state.seGainNode) {
+                    state.seGainNode.gain.value = state.seVolume;
+                }
+            });
+
+            // 指を離した時(change)にテスト音を鳴らす
+            seSlider.addEventListener('change', () => {
+                playTapSound();
+            });
+        }
+
+        async function openSettings() {
+            await initAudioContext();
+            document.getElementById('settings-modal').classList.remove('hidden');
+            
+            // プレイ中の場合は一時停止（Suspend）
+            if (state.isPlaying && state.audioCtx && state.audioCtx.state === 'running') {
+                await state.audioCtx.suspend();
+                state.isPaused = true;
+            }
+        }
+
+        async function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+            
+            // ポーズ中なら再開（Resume）
+            if (state.isPlaying && state.isPaused && state.audioCtx && state.audioCtx.state === 'suspended') {
+                await state.audioCtx.resume();
+                state.isPaused = false;
+            }
+        }
+
+        // --- タップ音 ---
+        function playTapSound() {
+            if (!state.audioCtx || state.audioCtx.state !== 'running') return;
+            
+            const osc = state.audioCtx.createOscillator();
+            const gainNode = state.audioCtx.createGain();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(600, state.audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, state.audioCtx.currentTime + 0.03);
+            
+            gainNode.gain.setValueAtTime(0.5, state.audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, state.audioCtx.currentTime + 0.05);
+            
+            // SE専用のGainNodeに接続
+            osc.connect(gainNode);
+            gainNode.connect(state.seGainNode);
+            
+            osc.start();
+            osc.stop(state.audioCtx.currentTime + 0.05);
+        }
+
+        // --- トラック選択と読み込み ---
         function renderTrackList() {
             const list = document.getElementById('track-list');
             list.innerHTML = '';
@@ -329,11 +507,7 @@
             PLAYLIST.forEach(track => {
                 const btn = document.createElement('button');
                 btn.className = "btn-steampunk w-full p-3 flex items-center gap-3 rounded text-left group";
-                btn.innerHTML = `
-                    <div class="flex flex-col overflow-hidden w-full">
-                        <span class="font-bold truncate text-sm text-white group-hover:text-cyan-300 transition-colors">${track.title}</span>
-                    </div>
-                `;
+                btn.innerHTML = `<span class="font-bold truncate text-sm text-white group-hover:text-cyan-300 transition-colors">${track.title}</span>`;
                 btn.onclick = () => selectTrack(track, btn);
                 list.appendChild(btn);
             });
@@ -348,7 +522,6 @@
         }
 
         async function selectTrack(track, btnElement) {
-            // UI上のアクティブ状態を更新
             document.querySelectorAll('#track-list button').forEach(b => b.classList.remove('active'));
             if (btnElement) btnElement.classList.add('active');
             
@@ -358,67 +531,33 @@
             
             startBtn.disabled = true;
             statusEl.textContent = "DOWNLOADING AUDIO DATA...";
-            statusEl.className = "text-xs font-mono mt-2 text-orange-400";
+            statusEl.className = "text-xs font-mono mt-1 text-orange-400";
             startBtn.textContent = "PROCESSING...";
 
             state.selectedTrack = track;
 
-            // ==========================================
-            // ジャケット画像の読み込み処理
-            // ==========================================
+            // ジャケット画像処理
             const jacketImg = document.getElementById('jacket-image');
             const noImgText = document.getElementById('no-image-text');
-            
-            // 一旦画像を隠してNO IMAGEを表示
             jacketImg.classList.add('hidden');
             noImgText.classList.remove('hidden');
 
             let baseName = "";
-            let fileNameFull = "";
-
-            if (track.id.startsWith("local_")) {
-                // ローカルファイルの場合はtitle(ファイル名)を使用
-                fileNameFull = track.title;
-            } else {
-                // urlからファイル名を抽出 (例: "./Musics/sample1.mp3" -> "sample1.mp3")
-                fileNameFull = track.url.split('/').pop();
-            }
-
-            // 拡張子を取り除く (例: "sample1.mp3" -> "sample1")
+            let fileNameFull = track.id.startsWith("local_") ? track.title : track.url.split('/').pop();
             baseName = fileNameFull.split('.').slice(0, -1).join('.') || fileNameFull;
 
             if (baseName) {
-                // まずは .jpg を試す
                 const imgJpg = new Image();
                 imgJpg.src = `./Images/${baseName}.jpg`;
-                
-                imgJpg.onload = () => {
-                    jacketImg.src = imgJpg.src;
-                    jacketImg.classList.remove('hidden');
-                    noImgText.classList.add('hidden');
-                };
-                
-                // .jpg が無かったら .png を試す
+                imgJpg.onload = () => { jacketImg.src = imgJpg.src; jacketImg.classList.remove('hidden'); noImgText.classList.add('hidden'); };
                 imgJpg.onerror = () => {
                     const imgPng = new Image();
                     imgPng.src = `./Images/${baseName}.png`;
-                    
-                    imgPng.onload = () => {
-                        jacketImg.src = imgPng.src;
-                        jacketImg.classList.remove('hidden');
-                        noImgText.classList.add('hidden');
-                    };
-                    // .png も無ければNO IMAGEのまま
+                    imgPng.onload = () => { jacketImg.src = imgPng.src; jacketImg.classList.remove('hidden'); noImgText.classList.add('hidden'); };
                 };
             }
-            // ==========================================
 
-            if (!state.audioCtx) {
-                state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (state.audioCtx.state === 'suspended') {
-                await state.audioCtx.resume();
-            }
+            await initAudioContext();
 
             try {
                 const response = await fetch(track.url);
@@ -428,39 +567,30 @@
                 state.buffer = await state.audioCtx.decodeAudioData(arrayBuffer);
                 
                 statusEl.textContent = "DATA READY. WAITING FOR ENGAGE.";
-                statusEl.className = "text-xs font-mono mt-2 text-cyan-400";
+                statusEl.className = "text-xs font-mono mt-1 text-cyan-400";
                 startBtn.disabled = false;
                 startBtn.textContent = "3. ENGAGE SYSTEM";
             } catch (err) {
                 console.error(err);
                 statusEl.textContent = "ERROR: FAILED TO LOAD AUDIO.";
-                statusEl.className = "text-xs font-mono mt-2 text-red-500";
+                statusEl.className = "text-xs font-mono mt-1 text-red-500";
                 startBtn.textContent = "SYSTEM ERROR";
             }
         }
 
-        // --- ローカルファイルの読み込み処理 ---
         document.getElementById('local-file-input').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            if (state.objectUrlToRevoke) {
-                URL.revokeObjectURL(state.objectUrlToRevoke);
-            }
-
+            if (state.objectUrlToRevoke) URL.revokeObjectURL(state.objectUrlToRevoke);
             const fileUrl = URL.createObjectURL(file);
             state.objectUrlToRevoke = fileUrl;
 
-            const customTrack = {
-                id: "local_" + file.name,
-                title: file.name,
-                url: fileUrl
-            };
-
-            selectTrack(customTrack, null);
+            selectTrack({ id: "local_" + file.name, title: file.name, url: fileUrl }, null);
             e.target.value = '';
         });
 
+        // --- 譜面生成 ---
         function generateNotes() {
             const seedString = state.selectedTrack.id + "_" + state.currentDiff;
             const seed = cyrb128(seedString);
@@ -501,7 +631,6 @@
                 
                 if (e > threshold && e > energies[i-1] && e > energies[i+1]) {
                     if (time - lastTime > diffCfg.minInterval) {
-                        
                         const isStrongBeat = e > strongThreshold;
                         const allowDouble = state.currentDiff !== 'easy' && seededRandom() > 0.15;
 
@@ -524,16 +653,13 @@
                                     stairDirection = lastLane === 0 ? 1 : (lastLane === config.lanes - 1 ? -1 : (seededRandom() > 0.5 ? 1 : -1));
                                     stairCount = 0;
                                 }
-                                
                                 nextLane = lastLane + stairDirection;
-                                
                                 if (nextLane < 0 || nextLane >= config.lanes) {
                                     stairDirection *= -1;
                                     nextLane = lastLane + stairDirection * 2;
                                     if (nextLane < 0) nextLane = 1;
                                     if (nextLane >= config.lanes) nextLane = config.lanes - 2;
                                 }
-                                
                                 stairCount++;
                                 if (stairCount > 5) isStairMode = false;
                             } else {
@@ -543,20 +669,20 @@
                                     nextLane = (nextLane + 1) % config.lanes;
                                 }
                             }
-
                             state.notes.push({ time: time, lane: nextLane, hit: false, missed: false });
                             lastLane = nextLane;
                         }
-
                         lastTime = time;
                     }
                 }
             }
         }
 
-        document.getElementById('start-btn').addEventListener('click', () => {
+        // --- ゲーム開始・終了 ---
+        document.getElementById('start-btn').addEventListener('click', async () => {
             if (!state.buffer) return;
             
+            await initAudioContext();
             generateNotes();
             
             state.score = 0;
@@ -572,11 +698,13 @@
             
             state.source = state.audioCtx.createBufferSource();
             state.source.buffer = state.buffer;
-            state.source.connect(state.audioCtx.destination);
+            // BGM用のGainNodeに接続
+            state.source.connect(state.bgmGainNode);
             state.source.start(state.startTime);
             
             state.source.onended = () => endGame();
             state.isPlaying = true;
+            state.isPaused = false;
         });
 
         function endGame() {
@@ -588,16 +716,15 @@
         }
 
         function returnToMenu() {
-            if (state.source) {
-                try { state.source.stop(); } catch(e){}
-            }
+            if (state.source) { try { state.source.stop(); } catch(e){} }
             state.isPlaying = false;
             document.getElementById('result-screen').classList.add('hidden');
             document.getElementById('menu-container').classList.remove('hidden');
         }
 
+        // --- 入力処理 ---
         function handleInput(laneIndex) {
-            if (!state.isPlaying) return;
+            if (!state.isPlaying || state.isPaused) return;
             
             const currentTime = state.audioCtx.currentTime - state.startTime;
             const laneWidth = Math.min(canvas.width * 0.22, 120);
@@ -647,7 +774,10 @@
             const laneIndex = config.keys.indexOf(e.key.toLowerCase());
             if (laneIndex !== -1 && !state.keyState[laneIndex]) {
                 state.keyState[laneIndex] = true;
-                handleInput(laneIndex);
+                if (!state.isPaused) {
+                    playTapSound();
+                    if (state.isPlaying) handleInput(laneIndex);
+                }
             }
         });
         window.addEventListener('keyup', (e) => {
@@ -657,7 +787,7 @@
 
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if (!state.isPlaying) return;
+            if (state.isPaused) return;
             const rect = canvas.getBoundingClientRect();
             const laneWidth = Math.min(canvas.width * 0.22, 120);
             const totalWidth = laneWidth * config.lanes;
@@ -668,12 +798,14 @@
                 if (x >= startX && x <= startX + totalWidth) {
                     const laneIndex = Math.floor((x - startX) / laneWidth);
                     state.keyState[laneIndex] = true;
-                    handleInput(laneIndex);
+                    playTapSound();
+                    if (state.isPlaying) handleInput(laneIndex);
                     setTimeout(() => { state.keyState[laneIndex] = false; }, 50);
                 }
             }
         }, {passive: false});
 
+        // --- 描画ユーティリティ ---
         function showJudgement(text, color) {
             const el = document.createElement('div');
             el.textContent = text;
@@ -715,12 +847,14 @@
             }));
         }
 
+        // --- メインループ ---
         function gameLoop() {
             ctx.fillStyle = config.colors.bg;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // 背景の歯車はポーズ中も少しだけ回す（止まっている感の軽減）
             state.gears.forEach(g => {
-                g.angle += g.speed;
+                if(!state.isPaused) g.angle += g.speed;
                 ctx.save();
                 ctx.translate(g.x, g.y);
                 ctx.rotate(g.angle);
@@ -735,12 +869,14 @@
             });
 
             if (state.isPlaying) {
+                // AudioContextの時間が基準になるため、Suspend中はここで時間が止まる
                 const currentTime = state.audioCtx.currentTime - state.startTime;
+                
                 const laneWidth = Math.min(canvas.width * 0.22, 120);
                 const totalWidth = laneWidth * config.lanes;
                 const startX = (canvas.width - totalWidth) / 2;
                 const targetY = canvas.height * 0.85;
-                const speed = config.difficulty[state.currentDiff].speed;
+                const speed = config.difficulty[state.currentDiff].speed * state.speedMultiplier;
 
                 ctx.fillStyle = 'rgba(10, 20, 25, 0.8)';
                 ctx.fillRect(startX, 0, totalWidth, canvas.height);
@@ -748,87 +884,52 @@
                 ctx.strokeStyle = config.colors.laneLine;
                 ctx.lineWidth = 2;
                 for (let i = 0; i <= config.lanes; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(startX + i * laneWidth, 0);
-                    ctx.lineTo(startX + i * laneWidth, canvas.height);
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(startX + i * laneWidth, 0); ctx.lineTo(startX + i * laneWidth, canvas.height); ctx.stroke();
                 }
 
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = config.colors.targetGlow;
-                ctx.fillStyle = config.colors.targetLine;
-                ctx.fillRect(startX, targetY - 4, totalWidth, 8);
-                ctx.shadowBlur = 0;
+                ctx.shadowBlur = 20; ctx.shadowColor = config.colors.targetGlow; ctx.fillStyle = config.colors.targetLine;
+                ctx.fillRect(startX, targetY - 4, totalWidth, 8); ctx.shadowBlur = 0;
 
                 for (let i = 0; i < config.lanes; i++) {
                     if (state.keyState[i]) {
                         const grad = ctx.createLinearGradient(0, targetY, 0, 0);
-                        grad.addColorStop(0, 'rgba(0, 243, 255, 0.3)');
-                        grad.addColorStop(1, 'rgba(0, 243, 255, 0)');
-                        ctx.fillStyle = grad;
-                        ctx.fillRect(startX + i * laneWidth, 0, laneWidth, targetY);
+                        grad.addColorStop(0, 'rgba(0, 243, 255, 0.3)'); grad.addColorStop(1, 'rgba(0, 243, 255, 0)');
+                        ctx.fillStyle = grad; ctx.fillRect(startX + i * laneWidth, 0, laneWidth, targetY);
                     }
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-                    ctx.font = '20px "Share Tech Mono"';
-                    ctx.textAlign = 'center';
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.font = '20px "Share Tech Mono"'; ctx.textAlign = 'center';
                     ctx.fillText(config.keys[i].toUpperCase(), startX + i * laneWidth + laneWidth/2, targetY + 35);
                 }
 
                 state.notes.forEach(note => {
                     if (note.hit) return;
-                    
                     const yPos = targetY - (note.time - currentTime) * speed;
                     
                     if (yPos > canvas.height + 50 && !note.missed) {
-                        note.missed = true;
-                        state.combo = 0;
-                        showJudgement('MISS', '#ff0000');
-                        updateHUD();
+                        note.missed = true; state.combo = 0; showJudgement('MISS', '#ff0000'); updateHUD();
                     }
 
                     if (yPos > -50 && yPos < canvas.height + 50 && !note.missed) {
                         const xPos = startX + note.lane * laneWidth + laneWidth / 2;
-                        
-                        ctx.shadowBlur = 10;
-                        ctx.shadowColor = config.colors.noteCore;
-                        
-                        ctx.beginPath();
-                        ctx.arc(xPos, yPos, laneWidth * 0.3, 0, Math.PI * 2);
-                        ctx.fillStyle = config.colors.noteBorder;
-                        ctx.fill();
-                        
-                        ctx.beginPath();
-                        ctx.arc(xPos, yPos, laneWidth * 0.2, 0, Math.PI * 2);
-                        ctx.fillStyle = config.colors.noteCore;
-                        ctx.fill();
-                        
+                        ctx.shadowBlur = 10; ctx.shadowColor = config.colors.noteCore;
+                        ctx.beginPath(); ctx.arc(xPos, yPos, laneWidth * 0.3, 0, Math.PI * 2); ctx.fillStyle = config.colors.noteBorder; ctx.fill();
+                        ctx.beginPath(); ctx.arc(xPos, yPos, laneWidth * 0.2, 0, Math.PI * 2); ctx.fillStyle = config.colors.noteCore; ctx.fill();
                         ctx.shadowBlur = 0;
                     }
                 });
 
                 for (let i = state.particles.length - 1; i >= 0; i--) {
                     const p = state.particles[i];
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.vy += 0.2;
-                    p.life -= 0.03;
-
-                    if (p.life <= 0) {
-                        state.particles.splice(i, 1);
-                    } else {
-                        ctx.globalAlpha = p.life;
-                        ctx.fillStyle = p.color;
-                        ctx.shadowBlur = 10;
-                        ctx.shadowColor = p.color;
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
-                        ctx.fill();
-                        ctx.globalAlpha = 1.0;
-                        ctx.shadowBlur = 0;
+                    if(!state.isPaused) {
+                        p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.03;
+                    }
+                    if (p.life <= 0) { state.particles.splice(i, 1); } 
+                    else {
+                        ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.shadowBlur = 10; ctx.shadowColor = p.color;
+                        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
+                        ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
                     }
                 }
             }
-
             requestAnimationFrame(gameLoop);
         }
     </script>
