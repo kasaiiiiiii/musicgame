@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AETHER BEATS: Web Edition V10</title>
+    <title>AETHER BEATS: Web Edition V11</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
@@ -137,7 +137,7 @@
                 
                 <div class="text-center mb-6">
                     <h1 class="text-4xl md:text-6xl font-black mb-1" style="color: var(--copper); text-shadow: 0 0 15px var(--neon-orange);">AETHER BEATS</h1>
-                    <p class="text-xs md:text-sm text-cyan-500 tracking-[0.4em] font-mono">CUSTOM TRACK EDITION V10</p>
+                    <p class="text-xs md:text-sm text-cyan-500 tracking-[0.4em] font-mono">VISUAL UPDATE EDITION V11</p>
                 </div>
 
                 <div class="flex flex-col md:flex-row gap-6 flex-grow overflow-hidden">
@@ -168,7 +168,15 @@
                     <!-- 右ペイン: 選択中の曲情報と設定 -->
                     <div class="w-full md:w-1/2 flex flex-col justify-between">
                         
-                        <div class="bg-black/50 p-4 rounded-lg border border-gray-800 mb-4 flex-grow flex flex-col justify-center items-center">
+                        <!-- ジャケット画像 & トラック情報 -->
+                        <div class="bg-black/50 p-4 rounded-lg border border-gray-800 mb-4 flex-grow flex flex-col justify-center items-center relative">
+                            
+                            <!-- ジャケット画像コンテナ -->
+                            <div id="jacket-container" class="w-32 h-32 md:w-40 md:h-40 mb-4 rounded border-2 border-gray-700 bg-gray-900 flex flex-col justify-center items-center overflow-hidden shadow-[0_0_15px_rgba(0,0,0,0.5)] relative">
+                                <span id="no-image-text" class="text-gray-600 font-mono text-sm tracking-widest absolute">NO IMAGE</span>
+                                <img id="jacket-image" src="" alt="Jacket" class="w-full h-full object-cover hidden z-10 transition-opacity duration-300">
+                            </div>
+
                             <h3 id="selected-title" class="text-xl md:text-2xl font-bold text-center text-white truncate w-full px-2">TRACK NOT SELECTED</h3>
                             <p id="selected-status" class="text-xs text-gray-500 font-mono mt-2">Awaiting Selection...</p>
                         </div>
@@ -176,7 +184,6 @@
                         <!-- 難易度設定 -->
                         <div class="mb-4">
                             <h2 class="text-xs text-gray-400 font-mono mb-2">2. DIFFICULTY</h2>
-                            <!-- ボタンを4つに拡張 -->
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                                 <button onclick="setDifficulty('easy')" id="diff-easy" class="btn-steampunk py-2 text-sm rounded">EASY</button>
                                 <button onclick="setDifficulty('normal')" id="diff-normal" class="btn-steampunk py-2 text-sm rounded active">NORMAL</button>
@@ -273,7 +280,6 @@
                 laneLine: '#1a3a40',
                 targetLine: '#b87333',
                 targetGlow: '#ff5500',
-                // ノーツの色をV8以前の固定カラー（水色）に戻しました
                 noteCore: '#00f3ff',
                 noteBorder: '#b5a642'
             }
@@ -294,7 +300,7 @@
             gears: [],
             particles: [],
             keyState: [false, false, false, false],
-            objectUrlToRevoke: null // メモリリーク防止用
+            objectUrlToRevoke: null
         };
 
         const canvas = document.getElementById('gameCanvas');
@@ -339,7 +345,6 @@
                 const el = document.getElementById(`diff-${id}`);
                 if (el) el.classList.toggle('active', id === diff);
             });
-            // ノーツの色の変更処理を削除し、常に config.colors の設定を使うようにしました
         }
 
         async function selectTrack(track, btnElement) {
@@ -357,6 +362,56 @@
             startBtn.textContent = "PROCESSING...";
 
             state.selectedTrack = track;
+
+            // ==========================================
+            // ジャケット画像の読み込み処理
+            // ==========================================
+            const jacketImg = document.getElementById('jacket-image');
+            const noImgText = document.getElementById('no-image-text');
+            
+            // 一旦画像を隠してNO IMAGEを表示
+            jacketImg.classList.add('hidden');
+            noImgText.classList.remove('hidden');
+
+            let baseName = "";
+            let fileNameFull = "";
+
+            if (track.id.startsWith("local_")) {
+                // ローカルファイルの場合はtitle(ファイル名)を使用
+                fileNameFull = track.title;
+            } else {
+                // urlからファイル名を抽出 (例: "./Musics/sample1.mp3" -> "sample1.mp3")
+                fileNameFull = track.url.split('/').pop();
+            }
+
+            // 拡張子を取り除く (例: "sample1.mp3" -> "sample1")
+            baseName = fileNameFull.split('.').slice(0, -1).join('.') || fileNameFull;
+
+            if (baseName) {
+                // まずは .jpg を試す
+                const imgJpg = new Image();
+                imgJpg.src = `./Images/${baseName}.jpg`;
+                
+                imgJpg.onload = () => {
+                    jacketImg.src = imgJpg.src;
+                    jacketImg.classList.remove('hidden');
+                    noImgText.classList.add('hidden');
+                };
+                
+                // .jpg が無かったら .png を試す
+                imgJpg.onerror = () => {
+                    const imgPng = new Image();
+                    imgPng.src = `./Images/${baseName}.png`;
+                    
+                    imgPng.onload = () => {
+                        jacketImg.src = imgPng.src;
+                        jacketImg.classList.remove('hidden');
+                        noImgText.classList.add('hidden');
+                    };
+                    // .png も無ければNO IMAGEのまま
+                };
+            }
+            // ==========================================
 
             if (!state.audioCtx) {
                 state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -389,7 +444,6 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            // 以前のローカルファイルのURLを解放してメモリリークを防ぐ
             if (state.objectUrlToRevoke) {
                 URL.revokeObjectURL(state.objectUrlToRevoke);
             }
@@ -397,18 +451,13 @@
             const fileUrl = URL.createObjectURL(file);
             state.objectUrlToRevoke = fileUrl;
 
-            // ローカルファイル用のトラックデータを作成
-            // 同じファイル名・同じ難易度なら同じ譜面になるように、idにファイル名を含める
             const customTrack = {
                 id: "local_" + file.name,
                 title: file.name,
                 url: fileUrl
             };
 
-            // 選択処理を実行（ボタン要素は無いのでnullを渡す）
             selectTrack(customTrack, null);
-            
-            // inputの値をリセット（同じファイルを再度選べるようにするため）
             e.target.value = '';
         });
 
