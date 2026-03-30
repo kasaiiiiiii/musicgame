@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AETHER BEATS: Web Edition V18</title>
+    <title>AETHER BEATS: Global Ranking Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
@@ -108,19 +108,12 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-radius: 3px; }
         ::-webkit-scrollbar-thumb { background: var(--copper); border-radius: 3px; }
-        
-        .online-pulse { animation: pulseGreen 2s infinite; }
-        @keyframes pulseGreen {
-            0% { text-shadow: 0 0 5px #00ff88; color: #00ff88; }
-            50% { text-shadow: 0 0 20px #00ff88; color: #fff; }
-            100% { text-shadow: 0 0 5px #00ff88; color: #00ff88; }
-        }
     </style>
 </head>
 <body>
 
     <!-- 設定ボタン -->
-    <button onclick="openSettings()" class="absolute top-4 right-4 md:top-6 md:right-6 z-[45] pointer-events-auto text-[var(--copper)] hover:text-[var(--neon-cyan)] transition-all p-2 rounded-full bg-black/50 backdrop-blur-sm border border-[var(--copper)] hover:shadow-[0_0_15px_var(--neon-cyan)]">
+    <button onclick="window.openSettings()" class="absolute top-4 right-4 md:top-6 md:right-6 z-[45] pointer-events-auto text-[var(--copper)] hover:text-[var(--neon-cyan)] transition-all p-2 rounded-full bg-black/50 backdrop-blur-sm border border-[var(--copper)] hover:shadow-[0_0_15px_var(--neon-cyan)]">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -148,7 +141,7 @@
                 
                 <div class="text-center mb-4 md:mb-6">
                     <h1 class="text-3xl md:text-6xl font-black mb-1" style="color: var(--copper); text-shadow: 0 0 15px var(--neon-orange);">AETHER BEATS</h1>
-                    <p class="text-[10px] md:text-sm text-cyan-500 tracking-[0.4em] font-mono">SYSTEM UPDATE V18 - <span id="db-status" class="text-gray-500">INITIALIZING...</span></p>
+                    <p class="text-[10px] md:text-sm text-cyan-500 tracking-[0.4em] font-mono">ONLINE RANKING EDITION - <span id="online-status" class="text-yellow-400 animate-pulse">CONNECTING...</span></p>
                 </div>
 
                 <div class="flex flex-col md:flex-row gap-4 md:gap-6 flex-grow overflow-hidden">
@@ -188,20 +181,20 @@
                         <div class="mb-4">
                             <h2 class="text-xs text-gray-400 font-mono mb-2">2. DIFFICULTY</h2>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                <button onclick="setDifficulty('easy')" id="diff-easy" class="btn-steampunk py-2 text-xs md:text-sm rounded">EASY</button>
-                                <button onclick="setDifficulty('normal')" id="diff-normal" class="btn-steampunk py-2 text-xs md:text-sm rounded active">NORMAL</button>
-                                <button onclick="setDifficulty('hard')" id="diff-hard" class="btn-steampunk py-2 text-xs md:text-sm rounded">HARD</button>
-                                <button onclick="setDifficulty('expert')" id="diff-expert" class="btn-steampunk py-2 text-xs md:text-sm rounded">EXPERT</button>
+                                <button onclick="window.setDifficulty('easy')" id="diff-easy" class="btn-steampunk py-2 text-xs md:text-sm rounded">EASY</button>
+                                <button onclick="window.setDifficulty('normal')" id="diff-normal" class="btn-steampunk py-2 text-xs md:text-sm rounded active">NORMAL</button>
+                                <button onclick="window.setDifficulty('hard')" id="diff-hard" class="btn-steampunk py-2 text-xs md:text-sm rounded">HARD</button>
+                                <button onclick="window.setDifficulty('expert')" id="diff-expert" class="btn-steampunk py-2 text-xs md:text-sm rounded">EXPERT</button>
                             </div>
                         </div>
 
-                        <!-- ランキング -->
-                        <div class="mb-4 bg-black/60 border border-gray-800 rounded p-3 flex-grow">
+                        <!-- グローバルランキング -->
+                        <div class="mb-4 bg-black/60 border border-gray-800 rounded p-3 flex-grow min-h-[150px]">
                             <h2 class="text-xs text-gray-400 font-mono mb-2 flex justify-between items-end border-b border-gray-800 pb-1">
-                                <span>3. LEADERBOARD</span>
+                                <span>3. GLOBAL RANKING</span>
                                 <span id="leaderboard-diff" class="text-sm font-bold tracking-wider">---</span>
                             </h2>
-                            <div id="leaderboard-list" class="space-y-1.5 font-mono text-sm mt-2">
+                            <div id="leaderboard-list" class="space-y-1.5 font-mono text-sm mt-2 overflow-y-auto max-h-[120px]">
                                 <div class="text-center text-gray-600 text-xs py-2">SELECT A TRACK</div>
                             </div>
                         </div>
@@ -219,7 +212,6 @@
             <div class="bg-[var(--bg-panel)] p-6 md:p-8 border-2 border-[var(--copper)] rounded-xl shadow-[0_0_40px_rgba(0,243,255,0.15)] w-full max-w-md relative">
                 <h2 class="text-3xl font-bold text-cyan-400 mb-8 font-mono text-center" style="text-shadow: 0 0 10px var(--neon-cyan);">SYSTEM SETTINGS</h2>
                 <div class="space-y-8">
-                    <!-- Sliders... -->
                     <div class="bg-black/40 p-4 rounded border border-gray-800">
                         <div class="flex justify-between items-center mb-4"><span class="text-sm text-gray-300 font-mono">NOTE SPEED</span><span id="speed-display" class="text-cyan-400 font-bold font-mono text-lg">x1.0</span></div>
                         <input type="range" id="speed-slider" min="0.5" max="3.0" step="0.1" value="1.0">
@@ -233,7 +225,7 @@
                         <input type="range" id="se-vol-slider" min="0" max="1" step="0.05" value="0.8">
                     </div>
                 </div>
-                <button onclick="closeSettings()" class="btn-steampunk w-full py-4 mt-8 text-xl font-bold tracking-widest rounded-lg">APPLY & CLOSE</button>
+                <button onclick="window.closeSettings()" class="btn-steampunk w-full py-4 mt-8 text-xl font-bold tracking-widest rounded-lg">APPLY & CLOSE</button>
             </div>
         </div>
 
@@ -241,8 +233,7 @@
         <div id="result-screen" class="absolute inset-0 flex flex-col items-center justify-center hidden pointer-events-auto bg-black/95 backdrop-blur-lg z-40">
             <h2 class="text-5xl md:text-7xl font-black mb-2 text-orange-500" style="text-shadow: 0 0 30px var(--neon-orange);">TRACK COMPLETE</h2>
             
-            <!-- 自己ベスト更新表示 -->
-            <p id="result-highscore-msg" class="text-yellow-400 font-bold text-xl md:text-2xl mb-6 hidden animate-pulse font-mono tracking-widest" style="text-shadow: 0 0 10px yellow;">★ NEW RECORD SAVED ★</p>
+            <p id="result-highscore-msg" class="text-cyan-400 font-bold text-xl md:text-2xl mb-6 hidden animate-pulse font-mono tracking-widest" style="text-shadow: 0 0 10px var(--neon-cyan);">SAVING TO CLOUD...</p>
             
             <p id="result-track-name" class="text-2xl md:text-3xl font-bold text-cyan-300 mb-8 truncate max-w-2xl px-4">Track Name</p>
             
@@ -257,148 +248,43 @@
                 </div>
             </div>
             
-            <button onclick="returnToMenu()" class="btn-steampunk px-10 py-3 md:py-4 rounded-lg text-lg md:text-xl font-bold tracking-widest">RETURN TO MENU</button>
+            <button onclick="window.returnToMenu()" class="btn-steampunk px-10 py-3 md:py-4 rounded-lg text-lg md:text-xl font-bold tracking-widest">RETURN TO MENU</button>
         </div>
     </div>
 
     <div id="judge-container"></div>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- データベース・クラウド連携ロジック (ハイブリッド対応版) -->
+    <!-- メインロジック（Firebase連携モジュール） -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        window.cloudScores = [];
-        window.currentUserUid = null;
-        let unsubscribeSnapshot = null;
-        let isOnline = false;
-        let db = null;
-        let appId = 'default-app-id';
-
-        function updateStatus(text, className) {
-            const el = document.getElementById('db-status');
-            if (el) { el.textContent = text; el.className = className; }
-        }
-
-        // --- ローカル保存用のフォールバック ---
-        function loadLocalScores() {
-            try {
-                const localData = localStorage.getItem('aether_beats_scores_v18');
-                if (localData) {
-                    window.cloudScores = JSON.parse(localData);
-                } else {
-                    window.cloudScores = [];
-                }
-                if (typeof window.updateLeaderboardDisplay === 'function') window.updateLeaderboardDisplay();
-            } catch(e) { console.error(e); }
-        }
-
-        function saveLocalScore(trackId, diff, score) {
-            try {
-                const newScore = {
-                    id: 'local_' + Date.now(),
-                    trackId: trackId,
-                    diff: diff,
-                    score: score,
-                    userId: 'YOU (LOCAL)',
-                    timestamp: Date.now()
-                };
-                window.cloudScores.push(newScore);
-                localStorage.setItem('aether_beats_scores_v18', JSON.stringify(window.cloudScores));
-                if (typeof window.updateLeaderboardDisplay === 'function') window.updateLeaderboardDisplay();
-                return true;
-            } catch(e) { return false; }
-        }
-
-        // --- Firebase初期化 ---
-        async function initFirebase() {
-            try {
-                let firebaseConfig = null;
-                // AI環境が提供する変数があるか確認
-                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                    firebaseConfig = JSON.parse(__firebase_config);
-                }
-
-                // APIキーが存在しない場合（ローカルでHTMLを直接開いた場合）はエラーを投げてオフラインモードへ移行
-                if (!firebaseConfig || !firebaseConfig.apiKey) {
-                    throw new Error("No API Key found. Switching to offline local mode.");
-                }
-
-                const app = initializeApp(firebaseConfig);
-                const auth = getAuth(app);
-                db = getFirestore(app);
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                isOnline = true;
-
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        window.currentUserUid = user.uid;
-                        updateStatus("ONLINE DB CONNECTED", "online-pulse font-bold text-[10px] md:text-xs");
-
-                        const scoresRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-                        if (unsubscribeSnapshot) unsubscribeSnapshot();
-                        
-                        // クラウドからデータ受信
-                        unsubscribeSnapshot = onSnapshot(scoresRef, (snapshot) => {
-                            window.cloudScores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                            if (typeof window.updateLeaderboardDisplay === 'function') window.updateLeaderboardDisplay();
-                        }, (error) => {
-                            console.error("DB Sync Error:", error);
-                            updateStatus("SYNC ERROR (LOCAL MODE)", "text-orange-500 font-bold");
-                            isOnline = false;
-                            loadLocalScores();
-                        });
-                    } else {
-                        window.currentUserUid = null;
-                    }
-                });
-
-            } catch (error) {
-                // エラー時（ローカル実行時など）はオフラインモードとしてLocalStorageを使用
-                console.warn(error.message);
-                updateStatus("OFFLINE (LOCAL SAVE MODE)", "text-orange-400 font-bold text-[10px] md:text-xs");
-                isOnline = false;
-                window.currentUserUid = "YOU (LOCAL)";
-                loadLocalScores();
-            }
-        }
-
-        // --- 共通のスコア保存関数 ---
-        window.saveScoreToCloud = async function(trackId, diff, score) {
-            if (score <= 0) return false;
-            
-            // オンライン環境であればクラウドへ保存
-            if (isOnline && db && window.currentUserUid) {
-                try {
-                    const scoresRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-                    await addDoc(scoresRef, {
-                        trackId: trackId, diff: diff, score: score,
-                        userId: window.currentUserUid, timestamp: Date.now()
-                    });
-                    return true;
-                } catch (e) {
-                    console.error("Cloud save failed, falling back to local:", e);
-                    return saveLocalScore(trackId, diff, score);
-                }
-            } else {
-                // オフライン環境ならローカルへ保存
-                return saveLocalScore(trackId, diff, score);
-            }
+        // === [重要] GitHubで公開する際の設定 ===
+        // GitHub Pages等でこのファイルを動かす場合は、ご自身のFirebaseプロジェクトを作成し、
+        // 以下の myFirebaseConfig の内容をご自身の「Firebase設定」に書き換えてください。
+        const myFirebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
+        // =======================================
 
-        initFirebase();
-    </script>
+        // プレビュー環境での実行設定（プレビュー環境の変数がなければ手動設定を読み込む）
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myFirebaseConfig;
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'aether-beats-app';
 
-    <!-- ゲームロジック -->
-    <script>
+        let currentUser = null;
+        let globalScores = []; // 全ユーザーのスコアを保持
+
+        // 曲リスト
         const PLAYLIST = [
             {
                 id: "track_01",
@@ -412,58 +298,15 @@
             }
         ];
 
-        // スコア取得処理
-        function getScores(trackId, diff) {
-            if (!window.cloudScores || window.cloudScores.length === 0) return [];
-            const filtered = window.cloudScores.filter(s => s.trackId === trackId && s.diff === diff);
-            filtered.sort((a, b) => b.score - a.score);
-            
-            const uniqueUserScores = [];
-            const seenUsers = new Set();
-            for (const s of filtered) {
-                if (!seenUsers.has(s.userId)) {
-                    seenUsers.add(s.userId);
-                    uniqueUserScores.push(s);
-                }
-            }
-            return uniqueUserScores.slice(0, 5);
-        }
-
-        // 疑似乱数生成器
-        function cyrb128(str) {
-            let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
-            for (let i = 0, k; i < str.length; i++) {
-                k = str.charCodeAt(i);
-                h1 = h2 ^ Math.imul(h1 ^ k, 597399067); h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
-                h3 = h4 ^ Math.imul(h3 ^ k, 951274213); h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
-            }
-            h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067); h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
-            h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213); h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
-            return (h1^h2^h3^h4) >>> 0;
-        }
-        function mulberry32(a) {
-            return function() {
-              var t = a += 0x6D2B79F5;
-              t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-              return ((t ^ t >>> 14) >>> 0) / 4294967296;
-            }
-        }
-
-        let seededRandom = Math.random;
-
         const config = {
-            lanes: 4,
-            keys: ['d', 'f', 'j', 'k'],
+            lanes: 4, keys: ['d', 'f', 'j', 'k'],
             difficulty: {
                 easy:   { speed: 600,  threshold: 2.2,  minInterval: 0.35 },
                 normal: { speed: 850,  threshold: 1.7,  minInterval: 0.25 },
                 hard:   { speed: 1150, threshold: 1.35, minInterval: 0.16 },
                 expert: { speed: 1450, threshold: 1.1,  minInterval: 0.11 }
             },
-            colors: {
-                bg: '#0a0a0c', laneLine: '#1a3a40', targetLine: '#b87333',
-                targetGlow: '#ff5500', noteCore: '#00f3ff', noteBorder: '#b5a642'
-            }
+            colors: { bg: '#0a0a0c', laneLine: '#1a3a40', targetLine: '#b87333', targetGlow: '#ff5500', noteCore: '#00f3ff', noteBorder: '#b5a642' }
         };
 
         let state = {
@@ -477,9 +320,134 @@
         const ctx = canvas.getContext('2d');
         const judgeContainer = document.getElementById('judge-container');
 
-        window.onload = () => {
+        // ==== データベース（Firebase）関連ロジック ====
+
+        // 1. ユーザー認証の初期化
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth error:", error);
+                document.getElementById('online-status').textContent = "OFFLINE MODE";
+                document.getElementById('online-status').className = "text-red-500 font-bold";
+            }
+        };
+
+        // 2. 認証状態の監視とリアルタイム通信の開始
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('online-status').textContent = "SYSTEM ONLINE";
+                document.getElementById('online-status').className = "text-green-400 font-bold";
+                setupLeaderboardListener();
+            }
+        });
+
+        // 3. クラウドデータのリアルタイム同期
+        function setupLeaderboardListener() {
+            if (!currentUser) return;
+            const scoresRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
+            
+            // サーバーのスコアが更新されたら自動で受信する
+            onSnapshot(scoresRef, (snapshot) => {
+                globalScores = [];
+                snapshot.forEach((doc) => {
+                    globalScores.push({ id: doc.id, ...doc.data() });
+                });
+                updateLeaderboardDisplay(); // 取得後にランキング再描画
+            }, (error) => {
+                console.error("Firestore Listen Error:", error);
+            });
+        }
+
+        // 4. クラウドへスコアを送信
+        async function saveScoreToCloud(trackId, diff, score) {
+            if (!currentUser || score <= 0) return false;
+            
+            // 自分の過去のスコアと比較
+            const myScores = globalScores.filter(s => s.userId === currentUser.uid && s.trackId === trackId && s.diff === diff);
+            const myBest = myScores.length > 0 ? Math.max(...myScores.map(s => s.score)) : -1;
+
+            if (score > myBest) {
+                const docId = `${trackId}_${diff}_${currentUser.uid}`;
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'scores', docId);
+                
+                try {
+                    await setDoc(docRef, {
+                        userId: currentUser.uid,
+                        playerName: `GUEST-${currentUser.uid.substring(0, 4)}`, // 自動生成名
+                        trackId: trackId,
+                        diff: diff,
+                        score: score,
+                        timestamp: Date.now()
+                    });
+                    return true; // 新記録更新成功
+                } catch(e) {
+                    console.error("Save error", e);
+                }
+            }
+            return false;
+        }
+
+        // ランキングの画面描画
+        function updateLeaderboardDisplay() {
+            if (!state.selectedTrack) return;
+            
+            const diffDisplay = document.getElementById('leaderboard-diff');
+            diffDisplay.textContent = state.currentDiff.toUpperCase();
+            const colors = { easy: 'text-[#00ff88]', normal: 'text-[#00f3ff]', hard: 'text-[#ffaa00]', expert: 'text-[#ff0044]' };
+            diffDisplay.className = `text-sm font-bold tracking-wider ${colors[state.currentDiff]}`;
+
+            const listEl = document.getElementById('leaderboard-list');
+            listEl.innerHTML = '';
+            
+            // 選択中の曲と難易度で絞り込み、メモリ上でソート（高い順）
+            const trackScores = globalScores.filter(s => s.trackId === state.selectedTrack.id && s.diff === state.currentDiff);
+            trackScores.sort((a, b) => b.score - a.score);
+            
+            if (trackScores.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">NO RECORDS YET.<br>BE THE FIRST!</div>';
+                return;
+            }
+            
+            // トップ10を表示
+            const topScores = trackScores.slice(0, 10);
+            
+            topScores.forEach((record, index) => {
+                const isMe = currentUser && record.userId === currentUser.uid;
+                const row = document.createElement('div');
+                row.className = `flex justify-between items-center border-b border-gray-800/50 pb-1 pt-1 ${isMe ? 'text-yellow-400 bg-yellow-900/20 rounded px-1' : 'text-gray-300 px-1'}`;
+                
+                const rankSpan = document.createElement('span');
+                rankSpan.className = `w-6 flex-shrink-0 text-xs font-bold ${index===0 ? 'text-orange-400' : ''}`;
+                rankSpan.textContent = `#${index + 1}`;
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = "flex-grow text-[10px] md:text-xs truncate px-2 font-mono";
+                nameSpan.textContent = record.playerName + (isMe ? " (YOU)" : "");
+
+                const scoreSpan = document.createElement('span');
+                scoreSpan.className = `w-16 md:w-20 flex-shrink-0 text-right font-bold text-xs md:text-sm ${isMe ? 'text-yellow-400' : 'text-cyan-400'}`;
+                scoreSpan.textContent = record.score.toString().padStart(7, '0');
+                
+                row.appendChild(rankSpan);
+                row.appendChild(nameSpan);
+                row.appendChild(scoreSpan);
+                listEl.appendChild(row);
+            });
+        }
+
+
+        // ==== ゲームの初期化と基本システム ====
+
+        window.onload = async () => {
             resize(); window.addEventListener('resize', resize);
-            initGears(); setDifficulty('normal'); renderTrackList(); setupSettings();
+            initGears(); window.setDifficulty('normal'); renderTrackList(); setupSettings();
+            await initAuth(); // Firebase認証開始
             requestAnimationFrame(gameLoop);
         };
 
@@ -511,20 +479,6 @@
             seSlider.addEventListener('change', () => playTapSound());
         }
 
-        async function openSettings() {
-            await initAudioContext(); document.getElementById('settings-modal').classList.remove('hidden');
-            if (state.isPlaying && state.audioCtx && state.audioCtx.state === 'running') {
-                await state.audioCtx.suspend(); state.isPaused = true;
-            }
-        }
-
-        async function closeSettings() {
-            document.getElementById('settings-modal').classList.add('hidden');
-            if (state.isPlaying && state.isPaused && state.audioCtx && state.audioCtx.state === 'suspended') {
-                await state.audioCtx.resume(); state.isPaused = false;
-            }
-        }
-
         function playTapSound() {
             if (!state.audioCtx || state.audioCtx.state !== 'running') return;
             const osc = state.audioCtx.createOscillator(); const gainNode = state.audioCtx.createGain();
@@ -533,6 +487,30 @@
             osc.connect(gainNode); gainNode.connect(state.seGainNode);
             osc.start(); osc.stop(state.audioCtx.currentTime + 0.05);
         }
+
+        // HTMLから呼び出す関数をwindowオブジェクトに登録（モジュール化対応）
+        window.openSettings = async () => {
+            await initAudioContext(); document.getElementById('settings-modal').classList.remove('hidden');
+            if (state.isPlaying && state.audioCtx && state.audioCtx.state === 'running') {
+                await state.audioCtx.suspend(); state.isPaused = true;
+            }
+        };
+
+        window.closeSettings = async () => {
+            document.getElementById('settings-modal').classList.add('hidden');
+            if (state.isPlaying && state.isPaused && state.audioCtx && state.audioCtx.state === 'suspended') {
+                await state.audioCtx.resume(); state.isPaused = false;
+            }
+        };
+
+        window.setDifficulty = (diff) => {
+            state.currentDiff = diff;
+            ['easy', 'normal', 'hard', 'expert'].forEach(id => {
+                const el = document.getElementById(`diff-${id}`);
+                if (el) el.classList.toggle('active', id === diff);
+            });
+            if (state.selectedTrack) updateLeaderboardDisplay();
+        };
 
         function renderTrackList() {
             const list = document.getElementById('track-list'); list.innerHTML = '';
@@ -544,68 +522,6 @@
                 btn.onclick = () => selectTrack(track, btn);
                 list.appendChild(btn);
             });
-        }
-
-        // ランキング表示の更新
-        window.updateLeaderboardDisplay = function() {
-            if (!state.selectedTrack) return;
-            
-            const diffDisplay = document.getElementById('leaderboard-diff');
-            diffDisplay.textContent = state.currentDiff.toUpperCase();
-            
-            const colors = { easy: 'text-[#00ff88]', normal: 'text-[#00f3ff]', hard: 'text-[#ffaa00]', expert: 'text-[#ff0044]' };
-            diffDisplay.className = `text-sm font-bold tracking-wider ${colors[state.currentDiff]}`;
-
-            const listEl = document.getElementById('leaderboard-list');
-            listEl.innerHTML = '';
-            
-            const scores = getScores(state.selectedTrack.id, state.currentDiff);
-            
-            if (scores.length === 0) {
-                listEl.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">NO RECORDS YET</div>';
-                return;
-            }
-            
-            const ranks = ['1ST', '2ND', '3RD', '4TH', '5TH'];
-            scores.forEach((entry, index) => {
-                const row = document.createElement('div');
-                const isFirst = index === 0;
-                row.className = `flex justify-between items-center border-b border-gray-800/50 pb-1 pt-1 ${isFirst ? 'text-yellow-400 font-bold' : 'text-gray-400'}`;
-                
-                const rankSpan = document.createElement('span');
-                rankSpan.className = "w-10 flex-shrink-0 text-xs md:text-sm";
-                rankSpan.textContent = ranks[index];
-                if (isFirst) rankSpan.innerHTML = `👑 ${ranks[index]}`;
-                
-                const userSpan = document.createElement('span');
-                
-                if (entry.userId && entry.userId === window.currentUserUid) {
-                    userSpan.textContent = "YOU";
-                    userSpan.className = "flex-grow text-[10px] md:text-xs text-cyan-400 text-center font-bold truncate px-2";
-                } else {
-                    const displayId = entry.userId ? entry.userId : "ANONYMOUS";
-                    userSpan.textContent = displayId;
-                    userSpan.className = "flex-grow text-[10px] md:text-xs text-gray-500 text-center truncate px-2";
-                }
-
-                const scoreSpan = document.createElement('span');
-                scoreSpan.className = "w-16 flex-shrink-0 text-right font-bold text-xs md:text-sm";
-                scoreSpan.textContent = entry.score.toString().padStart(7, '0');
-                
-                row.appendChild(rankSpan);
-                row.appendChild(userSpan);
-                row.appendChild(scoreSpan);
-                listEl.appendChild(row);
-            });
-        };
-
-        function setDifficulty(diff) {
-            state.currentDiff = diff;
-            ['easy', 'normal', 'hard', 'expert'].forEach(id => {
-                const el = document.getElementById(`diff-${id}`);
-                if (el) el.classList.toggle('active', id === diff);
-            });
-            if (state.selectedTrack) window.updateLeaderboardDisplay();
         }
 
         async function selectTrack(track, btnElement) {
@@ -620,7 +536,7 @@
             statusEl.className = "text-xs font-mono mt-1 text-orange-400"; startBtn.textContent = "PROCESSING...";
 
             state.selectedTrack = track;
-            window.updateLeaderboardDisplay();
+            updateLeaderboardDisplay();
 
             const jacketImg = document.getElementById('jacket-image');
             const noImgText = document.getElementById('no-image-text');
@@ -660,6 +576,25 @@
             selectTrack({ id: "local_" + file.name, title: file.name, url: fileUrl }, null);
             e.target.value = '';
         });
+
+        // 疑似乱数等
+        function cyrb128(str) {
+            let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+            for (let i = 0, k; i < str.length; i++) {
+                k = str.charCodeAt(i); h1 = h2 ^ Math.imul(h1 ^ k, 597399067); h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+                h3 = h4 ^ Math.imul(h3 ^ k, 951274213); h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+            }
+            h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067); h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+            h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213); h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+            return (h1^h2^h3^h4) >>> 0;
+        }
+        function mulberry32(a) {
+            return function() {
+              var t = a += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+              return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+        }
+        let seededRandom = Math.random;
 
         function generateNotes() {
             const seed = cyrb128(state.selectedTrack.id + "_" + state.currentDiff); seededRandom = mulberry32(seed);
@@ -715,6 +650,7 @@
             state.source.onended = () => endGame(); state.isPlaying = true; state.isPaused = false;
         });
 
+        // 終了時：オンラインへスコア送信
         async function endGame() {
             state.isPlaying = false;
             const finalScore = Math.floor(state.score);
@@ -724,31 +660,37 @@
             document.getElementById('result-combo').textContent = state.maxCombo;
             
             const msgEl = document.getElementById('result-highscore-msg');
-            msgEl.classList.add('hidden');
-
-            if (window.saveScoreToCloud && finalScore > 0) {
-                const myScores = window.cloudScores ? window.cloudScores.filter(s => s.trackId === state.selectedTrack.id && s.diff === state.currentDiff && s.userId === window.currentUserUid) : [];
-                myScores.sort((a, b) => b.score - a.score);
-                const isNewRecord = (myScores.length === 0 || finalScore > myScores[0].score);
-
-                const saved = await window.saveScoreToCloud(state.selectedTrack.id, state.currentDiff, finalScore);
-                
-                if (saved && isNewRecord) {
-                    msgEl.classList.remove('hidden');
-                }
-            }
-            
             document.getElementById('result-screen').classList.remove('hidden');
+
+            if (currentUser && !state.selectedTrack.id.startsWith("local_")) {
+                msgEl.classList.remove('hidden');
+                msgEl.textContent = "SAVING TO CLOUD...";
+                msgEl.className = "text-cyan-400 font-bold text-xl md:text-2xl mb-6 animate-pulse font-mono tracking-widest";
+                
+                // クラウドへ保存
+                const isNewRecord = await saveScoreToCloud(state.selectedTrack.id, state.currentDiff, finalScore);
+                
+                if (isNewRecord) {
+                    msgEl.textContent = "★ NEW GLOBAL RECORD ★";
+                    msgEl.className = "text-yellow-400 font-bold text-xl md:text-2xl mb-6 animate-pulse font-mono tracking-widest score-glow";
+                } else {
+                    msgEl.textContent = "TRACK CLEARED";
+                    msgEl.className = "text-gray-400 font-bold text-xl md:text-2xl mb-6 font-mono tracking-widest";
+                }
+            } else {
+                msgEl.classList.add('hidden');
+            }
         }
 
-        function returnToMenu() {
+        window.returnToMenu = () => {
             if (state.source) { try { state.source.stop(); } catch(e){} }
             state.isPlaying = false;
             document.getElementById('result-screen').classList.add('hidden');
-            window.updateLeaderboardDisplay();
+            updateLeaderboardDisplay(); // ランキングをリフレッシュ
             document.getElementById('menu-container').classList.remove('hidden');
-        }
+        };
 
+        // 操作周り
         function handleInput(laneIndex) {
             if (!state.isPlaying || state.isPaused) return;
             const currentTime = state.audioCtx.currentTime - state.startTime;
