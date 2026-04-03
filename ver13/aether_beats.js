@@ -202,7 +202,7 @@ async function beginTitleTransition() {
     bootScreen.style.opacity = '1';
 
     const lines = [
-        { t: '▸ AETHER BEATS SYSTEM v15.0.0',           cls: 'header' },
+        { t: '▸ AETHER BEATS SYSTEM v13.0.0',           cls: 'header' },
         { t: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',  cls: 'header' },
         { t: '> Scanning hardware interfaces...',        cls: '' },
         { t: '  AUDIO SUBSYSTEM ............. [  OK  ]', cls: 'ok' },
@@ -403,6 +403,35 @@ async function closeSettings() {
         state.isPaused = false;
     }
 }
+
+// ==========================================
+    // CREDITS UI
+    // ==========================================
+    async function openCredits() {
+        if (typeof playTapSound === 'function') playTapSound();
+        // 設定ボタンと同様、オーディオコンテキストを初期化
+        await initAudioContext();
+        
+        document.getElementById('credits-screen').classList.remove('hidden');
+        
+        // ゲームプレイ中なら一時停止する
+        if (state.isPlaying && state.audioCtx?.state === 'running') {
+            await state.audioCtx.suspend();
+            state.isPaused = true;
+        }
+    }
+
+    async function closeCredits() {
+        if (typeof playTapSound === 'function') playTapSound();
+        
+        document.getElementById('credits-screen').classList.add('hidden');
+        
+        // ゲームが一時停止中なら再開する
+        if (state.isPlaying && state.isPaused && state.audioCtx?.state === 'suspended') {
+            await state.audioCtx.resume();
+            state.isPaused = false;
+        }
+    }
 
 // ==========================================
 // TRACK LIST / LEADERBOARD
