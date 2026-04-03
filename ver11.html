@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AETHER BEATS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-orange: #ff5500;
+            --brass: #b5a642;
+            --copper: #b87333;
+            --bg-dark: #0a0a0c;
+            --bg-panel: rgba(10, 10, 12, 0.9);
+            --diff-easy: #00ff88;
+            --diff-normal: #00f3ff;
+            --diff-hard: #ffaa00;
+            --diff-expert: #ff0044;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0; overflow: hidden;
+            background-color: var(--bg-dark);
+            color: var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif;
+            user-select: none; touch-action: none;
+        }
+
+        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
+
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 10;
+        }
+
+        .pointer-events-auto { pointer-events: auto; }
+        .score-glow { text-shadow: 0 0 10px var(--neon-orange), 0 0 20px var(--neon-orange); color: var(--neon-orange); }
+        .hud-text { text-shadow: 0 0 10px var(--neon-cyan); }
+
+        .btn-steampunk {
+            background: linear-gradient(45deg, #1f110c, #2a1810);
+            border: 2px solid var(--copper); color: var(--neon-cyan);
+            box-shadow: 0 0 10px rgba(184,115,51,0.3); transition: all 0.2s ease;
+            font-family: 'Share Tech Mono', monospace; cursor: pointer;
+        }
+        .btn-steampunk:hover:not(:disabled) {
+            background: linear-gradient(45deg, #2a1810, #3a2215);
+            box-shadow: 0 0 15px var(--neon-cyan); transform: translateY(-2px);
+        }
+        .btn-steampunk.active {
+            border-color: var(--neon-cyan); box-shadow: 0 0 20px rgba(0,243,255,0.5);
+            background: rgba(0,243,255,0.1); color: #fff;
+        }
+        .btn-steampunk:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); transform: none; }
+
+        #diff-easy.active   { border-color: var(--diff-easy);   box-shadow: 0 0 20px rgba(0,255,136,0.5);  background: rgba(0,255,136,0.1);  color:#fff; }
+        #diff-normal.active { border-color: var(--diff-normal); box-shadow: 0 0 20px rgba(0,243,255,0.5);  background: rgba(0,243,255,0.1);  color:#fff; }
+        #diff-hard.active   { border-color: var(--diff-hard);   box-shadow: 0 0 20px rgba(255,170,0,0.5);  background: rgba(255,170,0,0.1);  color:#fff; }
+        #diff-expert.active { border-color: var(--diff-expert); box-shadow: 0 0 20px rgba(255,0,68,0.5);   background: rgba(255,0,68,0.1);   color:#fff; }
+
+        input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: var(--neon-cyan); cursor: pointer; margin-top: -7px; box-shadow: 0 0 10px var(--neon-cyan); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--copper); border-radius: 2px; }
+
+        @keyframes popOut {
+            0%   { transform: translate(-50%,-50%) scale(0.5); opacity: 1; }
+            50%  { transform: translate(-50%,-65%) scale(1.3); opacity: 1; }
+            100% { transform: translate(-50%,-80%) scale(1.1); opacity: 0; }
+        }
+        .judgement {
+            position: absolute; left: 50%; top: 60%; transform: translate(-50%,-50%);
+            font-size: 3.5rem; font-weight: 900; pointer-events: none; opacity: 0;
+            z-index: 20; animation: popOut 0.55s ease-out forwards;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--copper); border-radius: 3px; }
+
+        /* ============================================================
+           GLOBAL SCANLINES (always visible)
+        ============================================================ */
+        .scanlines {
+            position: fixed; inset: 0; pointer-events: none; z-index: 800;
+            background: repeating-linear-gradient(
+                0deg, transparent, transparent 2px,
+                rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px
+            );
+            animation: scanMove 10s linear infinite;
+        }
+        @keyframes scanMove { from { background-position: 0 0; } to { background-position: 0 200px; } }
+
+        .scan-sweep {
+            position: fixed; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(to right, transparent 0%, rgba(0,243,255,0.5) 50%, transparent 100%);
+            z-index: 801; pointer-events: none;
+            animation: sweepDown 7s linear infinite;
+        }
+        @keyframes sweepDown {
+            0%   { top: -5px; opacity: 0; }
+            3%   { opacity: 1; }
+            97%  { opacity: 0.6; }
+            100% { top: 100vh; opacity: 0; }
+        }
+
+        /* ============================================================
+           TRANSITION OVERLAY
+        ============================================================ */
+        #transition-overlay {
+            position: fixed; inset: 0; z-index: 900; pointer-events: none;
+            opacity: 0; background: white;
+        }
+
+        /* ============================================================
+           MISS FLASH
+        ============================================================ */
+        #miss-flash {
+            position: fixed; inset: 0; z-index: 16; pointer-events: none; opacity: 0;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(255,0,68,0.5) 100%);
+        }
+        @keyframes missFlashAnim { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+        /* ============================================================
+           COMBO MILESTONE
+        ============================================================ */
+        #combo-milestone {
+            position: fixed; left: 50%; top: 42%; transform: translate(-50%,-50%);
+            font-family: 'Orbitron', sans-serif; font-weight: 900;
+            pointer-events: none; z-index: 25; opacity: 0; text-align: center; white-space: nowrap;
+        }
+        @keyframes milestoneAnim {
+            0%   { transform: translate(-50%,-50%) scale(0.3); opacity: 0; }
+            18%  { transform: translate(-50%,-50%) scale(1.25); opacity: 1; }
+            40%  { transform: translate(-50%,-50%) scale(0.98); opacity: 1; }
+            75%  { transform: translate(-50%,-50%) scale(1.0);  opacity: 1; }
+            100% { transform: translate(-50%,-50%) scale(1.05); opacity: 0; }
+        }
+
+        /* ============================================================
+           TITLE SCREEN
+        ============================================================ */
+        #title-screen {
+            position: absolute; inset: 0; z-index: 90;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(10,10,12,0.82); pointer-events: auto;
+        }
+        @keyframes titleGlitchOut {
+            0%  { opacity: 1; transform: none; filter: none; }
+            15% { opacity: 1; transform: translateX(-8px) skewX(-3deg); filter: hue-rotate(90deg) brightness(1.5); }
+            30% { opacity: 1; transform: translateX(8px) skewX(3deg); filter: hue-rotate(200deg); }
+            50% { opacity: 0.6; transform: scaleY(1.08); filter: brightness(2.5); }
+            70% { opacity: 0.3; transform: scaleY(0.9) skewX(-2deg); }
+            85% { opacity: 0.1; transform: scaleY(0.2); }
+            100%{ opacity: 0; transform: scaleY(0); }
+        }
+
+        .title-logo-wrap { position: relative; text-align: center; margin-bottom: 0.5rem; }
+
+        .title-logo {
+            font-size: clamp(2.8rem, 9.5vw, 7.5rem);
+            font-weight: 900; color: var(--copper); letter-spacing: 0.04em;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 20px var(--neon-orange), 0 0 60px rgba(255,85,0,0.25), 0 0 100px rgba(255,85,0,0.1);
+            animation: titleFloat 3.5s ease-in-out infinite;
+            position: relative;
+        }
+        @keyframes titleFloat {
+            0%,100% { transform: translateY(0); filter: brightness(1); }
+            50% { transform: translateY(-9px); filter: brightness(1.2); }
+        }
+
+        .title-logo-glitch {
+            position: absolute; top: 0; left: 0; width: 100%;
+            font-size: clamp(2.8rem, 9.5vw, 7.5rem); font-weight: 900;
+            letter-spacing: 0.04em; font-family: 'Orbitron', sans-serif; opacity: 0;
+        }
+        .title-logo-glitch.g1 { color: #00f3ff; animation: glitch1 6s infinite steps(1) 0.3s; }
+        .title-logo-glitch.g2 { color: #ff0044; animation: glitch2 6s infinite steps(1) 1.8s; }
+
+        @keyframes glitch1 {
+            0%,88%,100%{ opacity:0; transform:translate(0); clip-path:none; }
+            89%{ opacity:.75; transform:translate(-5px,2px);  clip-path:inset(8%  0 70% 0); }
+            90%{ opacity:.75; transform:translate(5px,-2px);  clip-path:inset(55% 0 8%  0); }
+            91%{ opacity:.5;  transform:translate(-2px,0);    clip-path:inset(28% 0 38% 0); }
+            92%{ opacity:0; }
+            94%{ opacity:.4;  transform:translate(3px,1px);   clip-path:inset(3%  0 83% 0); }
+            95%{ opacity:0; }
+        }
+        @keyframes glitch2 {
+            0%,91%,100%{ opacity:0; transform:translate(0); clip-path:none; }
+            92%{ opacity:.65; transform:translate(6px,0);    clip-path:inset(38% 0 28% 0); }
+            93%{ opacity:.65; transform:translate(-6px,1px); clip-path:inset(65% 0 8%  0); }
+            94%{ opacity:0; }
+            96%{ opacity:.4;  transform:translate(2px,-1px); clip-path:inset(18% 0 58% 0); }
+            97%{ opacity:0; }
+        }
+
+        .title-subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(0.5rem, 1.5vw, 0.85rem); color: var(--neon-cyan);
+            letter-spacing: 0.5em; margin-top: 0.6rem;
+            text-shadow: 0 0 8px var(--neon-cyan); opacity: 0.8;
+        }
+
+        .title-decoration { display: flex; align-items: center; gap: 1rem; margin: 1.8rem 0 1.2rem; }
+        .title-line { height: 1px; width: clamp(50px, 9vw, 110px); background: linear-gradient(to right, transparent, var(--copper)); }
+        .title-line.right { background: linear-gradient(to left, transparent, var(--copper)); }
+        .title-diamond {
+            width: 9px; height: 9px; background: var(--copper); transform: rotate(45deg);
+            box-shadow: 0 0 8px var(--neon-orange); animation: diamondPulse 1.6s ease-in-out infinite;
+        }
+        @keyframes diamondPulse {
+            0%,100% { transform: rotate(45deg) scale(1);   box-shadow: 0 0 8px var(--neon-orange); }
+            50%     { transform: rotate(45deg) scale(1.6); box-shadow: 0 0 22px var(--neon-orange); }
+        }
+
+        @keyframes pressStart { 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+        .press-start-text {
+            animation: pressStart 1.3s infinite; color: var(--neon-cyan);
+            text-shadow: 0 0 10px var(--neon-cyan), 0 0 22px rgba(0,243,255,0.3);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(0.65rem, 1.8vw, 0.95rem); letter-spacing: 0.3em;
+        }
+        .title-version {
+            position: absolute; bottom: 4%;
+            font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+            color: rgba(184,115,51,0.45); letter-spacing: 0.2em;
+        }
+
+        /* Chord lines decoration */
+        .title-chord {
+            display: flex; gap: 3px; margin-top: 1.5rem;
+        }
+        .title-chord span {
+            display: block; width: 3px; background: var(--copper); opacity: 0.5;
+            animation: chordPulse 2s ease-in-out infinite;
+        }
+        @keyframes chordPulse {
+            0%,100% { height: 12px; opacity: 0.4; }
+            50% { height: 28px; opacity: 0.9; }
+        }
+
+        /* ============================================================
+           BOOT SCREEN
+        ============================================================ */
+        #boot-screen {
+            position: absolute; inset: 0; z-index: 89;
+            background: #000; display: none; flex-direction: column;
+            justify-content: center; padding: 8%; opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .boot-line {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(0.52rem, 1.15vw, 0.78rem); margin: 1.5px 0; opacity: 0;
+            color: #00f3ff;
+        }
+        .boot-line.ok     { color: #00ff88; }
+        .boot-line.warn   { color: #ffaa00; }
+        .boot-line.header { color: var(--copper); font-size: clamp(0.65rem, 1.3vw, 0.95rem); margin-bottom: 6px; }
+        .boot-cursor {
+            display: inline-block; width: 10px; height: 1.2em; background: #00f3ff;
+            vertical-align: middle; animation: blinkCursor 0.8s step-end infinite;
+        }
+        @keyframes blinkCursor { 0%,100%{ opacity:1; } 50%{ opacity:0; } }
+
+        /* ============================================================
+           RESULT SCREEN RANK
+        ============================================================ */
+        #result-rank {
+            font-family: 'Orbitron', sans-serif; font-weight: 900;
+            font-size: clamp(5rem, 18vw, 10rem); opacity: 0; display: block;
+        }
+        @keyframes rankReveal {
+            0%   { transform: scale(3); opacity: 0; filter: blur(30px); }
+            55%  { transform: scale(0.88); opacity: 1; filter: blur(0); }
+            72%  { transform: scale(1.08); }
+            86%  { transform: scale(0.97); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes rankGolden {
+            0%   { transform: scale(3); opacity: 0; filter: blur(30px); }
+            55%  { transform: scale(0.88); opacity: 1; filter: blur(0); }
+            72%  { transform: scale(1.1); }
+            86%  { transform: scale(0.97); }
+            100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 30px #ffd700); }
+        }
+        .rank-S { color: #ffd700; text-shadow: 0 0 40px #ffd700, 0 0 80px rgba(255,215,0,0.35); animation: rankGolden 0.9s ease-out forwards !important; }
+        .rank-A { color: #00f3ff; text-shadow: 0 0 30px #00f3ff; animation: rankReveal 0.85s ease-out forwards !important; }
+        .rank-B { color: #00ff88; text-shadow: 0 0 20px #00ff88; animation: rankReveal 0.85s ease-out forwards !important; }
+        .rank-C { color: #ffaa00; text-shadow: 0 0 20px #ffaa00; animation: rankReveal 0.85s ease-out forwards !important; }
+        .rank-D { color: #ff0044; text-shadow: 0 0 20px #ff0044; animation: rankReveal 0.85s ease-out forwards !important; }
+
+        /* ============================================================
+           COUNTDOWN
+        ============================================================ */
+        .countdown-num {
+            position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
+            font-family: 'Orbitron', sans-serif; font-weight: 900;
+            font-size: clamp(5rem, 18vw, 10rem);
+            pointer-events: none; z-index: 50; opacity: 0;
+            animation: countdownPop 0.5s ease-out forwards;
+        }
+        @keyframes countdownPop {
+            0%   { transform: translate(-50%,-50%) scale(1.8); opacity: 0; }
+            30%  { transform: translate(-50%,-50%) scale(0.95); opacity: 1; }
+            65%  { transform: translate(-50%,-50%) scale(1.0); opacity: 1; }
+            100% { transform: translate(-50%,-50%) scale(1.05); opacity: 0; }
+        }
+
+        /* ============================================================
+           ENGAGE (start) TRANSITION
+        ============================================================ */
+        #engage-overlay {
+            position: fixed; inset: 0; z-index: 700; pointer-events: none;
+            opacity: 0; display: flex; align-items: center; justify-content: center;
+        }
+        .engage-ring {
+            position: absolute; border: 2px solid var(--neon-cyan); border-radius: 50%;
+            animation: engageRingExpand 0.6s ease-out forwards;
+        }
+        @keyframes engageRingExpand {
+            0%   { width: 50px; height: 50px; opacity: 1; transform: translate(-50%,-50%); }
+            100% { width: 300vw; height: 300vh; opacity: 0; transform: translate(-50%,-50%); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Global scan effects -->
+    <div class="scanlines"></div>
+    <div class="scan-sweep"></div>
+
+    <!-- Overlays -->
+    <div id="transition-overlay"></div>
+    <div id="miss-flash"></div>
+    <div id="combo-milestone"></div>
+    <div id="engage-overlay"></div>
+
+    <!-- ============================================================
+         TITLE SCREEN
+    ============================================================ -->
+    <div id="title-screen">
+        <div class="title-logo-wrap">
+            <div class="title-logo-glitch g2">AETHER BEATS</div>
+            <div class="title-logo-glitch g1">AETHER BEATS</div>
+            <div class="title-logo">AETHER BEATS</div>
+            <div class="title-subtitle">◆ SYSTEM UPDATE V15 ◆</div>
+        </div>
+        <div class="title-decoration">
+            <div class="title-line"></div>
+            <div class="title-diamond"></div>
+            <div class="title-line right"></div>
+        </div>
+        <div class="press-start-text">▸ PRESS ANY KEY TO START ◂</div>
+        <div class="title-chord">
+            <span style="animation-delay:0s"></span>
+            <span style="animation-delay:0.15s"></span>
+            <span style="animation-delay:0.3s"></span>
+            <span style="animation-delay:0.45s"></span>
+            <span style="animation-delay:0.6s"></span>
+            <span style="animation-delay:0.45s"></span>
+            <span style="animation-delay:0.3s"></span>
+            <span style="animation-delay:0.15s"></span>
+            <span style="animation-delay:0s"></span>
+        </div>
+        <div class="title-version">AETHER BEATS SYSTEM — © v15.0.0</div>
+    </div>
+
+    <!-- ============================================================
+         BOOT SCREEN
+    ============================================================ -->
+    <div id="boot-screen">
+        <div id="boot-lines"></div>
+    </div>
+
+    <!-- Settings Button -->
+    <button onclick="openSettings()" class="absolute top-4 right-4 md:top-6 md:right-6 z-[45] pointer-events-auto text-[var(--copper)] hover:text-[var(--neon-cyan)] transition-all p-2 rounded-full bg-black/50 backdrop-blur-sm border border-[var(--copper)] hover:shadow-[0_0_15px_var(--neon-cyan)]">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+    </button>
+
+    <div id="ui-layer" class="p-4 md:p-6 flex flex-col justify-between">
+        <!-- HUD -->
+        <div class="flex justify-between items-start">
+            <div>
+                <div class="text-xs md:text-sm text-gray-400 font-mono">SYSTEM SCORE</div>
+                <div id="score-display" class="text-3xl md:text-5xl font-bold score-glow">0000000</div>
+            </div>
+            <div class="flex items-start mr-14 md:mr-20">
+                <div class="text-right">
+                    <div class="text-xs md:text-sm text-gray-400 font-mono">CHAIN COMBO</div>
+                    <div id="combo-display" class="text-3xl md:text-5xl font-bold hud-text transition-transform duration-100">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="menu-container" class="absolute inset-0 flex items-center justify-center pointer-events-auto bg-black/80 backdrop-blur-sm z-40 p-4 hidden">
+            <div class="bg-[var(--bg-panel)] p-4 md:p-8 border border-[var(--copper)] rounded-xl shadow-[0_0_40px_rgba(184,115,51,0.2)] w-full max-w-4xl flex flex-col max-h-[95vh]">
+                <div class="text-center mb-4 md:mb-6">
+                    <h1 class="text-3xl md:text-6xl font-black mb-1" style="color:var(--copper);text-shadow:0 0 15px var(--neon-orange);">AETHER BEATS</h1>
+                    <p class="text-[10px] md:text-sm text-cyan-500 tracking-[0.4em] font-mono">SYSTEM UPDATE V15</p>
+                </div>
+                <div class="flex flex-col md:flex-row gap-4 md:gap-6 flex-grow overflow-hidden">
+                    <!-- Track List -->
+                    <div class="w-full md:w-1/2 flex flex-col overflow-hidden bg-black/50 rounded-lg p-3 md:p-4 border border-gray-800">
+                        <h2 class="text-sm text-orange-400 font-mono mb-3 border-b border-gray-700 pb-2 flex justify-between">
+                            <span>1. SELECT TRACK</span>
+                            <span id="track-count" class="text-cyan-500">0 TRACKS</span>
+                        </h2>
+                        <div id="track-list" class="overflow-y-auto pr-2 space-y-2 flex-grow pb-2"></div>
+                        <div class="mt-3 border-t border-gray-700 pt-3">
+                            <label class="btn-steampunk w-full p-3 flex items-center justify-center gap-3 rounded cursor-pointer group">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" /></svg>
+                                <span class="text-orange-400 font-bold group-hover:text-cyan-300 text-sm tracking-wider">+ LOAD LOCAL AUDIO</span>
+                                <input type="file" id="local-file-input" accept="audio/*" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+                    <!-- Right Pane -->
+                    <div class="w-full md:w-1/2 flex flex-col overflow-y-auto pr-2">
+                        <div class="bg-black/50 p-3 rounded-lg border border-gray-800 mb-4 flex flex-col justify-center items-center relative min-h-[140px] md:min-h-[160px]">
+                            <div id="jacket-container" class="w-20 h-20 md:w-24 md:h-24 mb-2 rounded border-2 border-gray-700 bg-gray-900 flex flex-col justify-center items-center overflow-hidden shadow-[0_0_15px_rgba(0,0,0,0.5)] relative">
+                                <span id="no-image-text" class="text-gray-600 font-mono text-[10px] tracking-widest absolute">NO IMAGE</span>
+                                <img id="jacket-image" src="" alt="Jacket" class="w-full h-full object-cover hidden z-10 transition-opacity duration-300">
+                            </div>
+                            <h3 id="selected-title" class="text-base md:text-lg font-bold text-center text-white truncate w-full px-2">TRACK NOT SELECTED</h3>
+                            <p id="selected-status" class="text-xs text-gray-500 font-mono mt-1">Awaiting Selection...</p>
+                        </div>
+                        <div class="mb-4">
+                            <h2 class="text-xs text-gray-400 font-mono mb-2">2. DIFFICULTY</h2>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                <button onclick="setDifficulty('easy')"   id="diff-easy"   class="btn-steampunk py-2 text-xs md:text-sm rounded">EASY</button>
+                                <button onclick="setDifficulty('normal')" id="diff-normal" class="btn-steampunk py-2 text-xs md:text-sm rounded active">NORMAL</button>
+                                <button onclick="setDifficulty('hard')"   id="diff-hard"   class="btn-steampunk py-2 text-xs md:text-sm rounded">HARD</button>
+                                <button onclick="setDifficulty('expert')" id="diff-expert" class="btn-steampunk py-2 text-xs md:text-sm rounded">EXPERT</button>
+                            </div>
+                        </div>
+                        <div class="mb-4 bg-black/60 border border-gray-800 rounded p-3 flex-grow">
+                            <h2 class="text-xs text-gray-400 font-mono mb-2 flex justify-between items-end border-b border-gray-800 pb-1">
+                                <span>3. LEADERBOARD</span>
+                                <span id="leaderboard-diff" class="text-sm font-bold tracking-wider">---</span>
+                            </h2>
+                            <div id="leaderboard-list" class="space-y-1.5 font-mono text-sm mt-2">
+                                <div class="text-center text-gray-600 text-xs py-2">SELECT A TRACK</div>
+                            </div>
+                        </div>
+                        <button id="start-btn" class="btn-steampunk w-full py-3 md:py-4 text-lg md:text-xl font-bold tracking-widest rounded-lg mt-auto" disabled>
+                            4. SYSTEM STANDBY
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="absolute inset-0 flex items-center justify-center hidden pointer-events-auto bg-black/80 backdrop-blur-md z-50 p-4">
+            <div class="bg-[var(--bg-panel)] p-6 md:p-8 border-2 border-[var(--copper)] rounded-xl shadow-[0_0_40px_rgba(0,243,255,0.15)] w-full max-w-md relative">
+                <h2 class="text-3xl font-bold text-cyan-400 mb-8 font-mono text-center" style="text-shadow:0 0 10px var(--neon-cyan);">SYSTEM SETTINGS</h2>
+                <div class="space-y-8">
+                    <div class="bg-black/40 p-4 rounded border border-gray-800">
+                        <div class="flex justify-between items-center mb-4"><span class="text-sm text-gray-300 font-mono">NOTE SPEED</span><span id="speed-display" class="text-cyan-400 font-bold font-mono text-lg">x1.0</span></div>
+                        <input type="range" id="speed-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+                    </div>
+                    <div class="bg-black/40 p-4 rounded border border-gray-800">
+                        <div class="flex justify-between items-center mb-4"><span class="text-sm text-gray-300 font-mono">BGM VOLUME</span><span id="bgm-vol-display" class="text-cyan-400 font-bold font-mono text-lg">80%</span></div>
+                        <input type="range" id="bgm-vol-slider" min="0" max="1" step="0.05" value="0.8">
+                    </div>
+                    <div class="bg-black/40 p-4 rounded border border-gray-800">
+                        <div class="flex justify-between items-center mb-4"><span class="text-sm text-gray-300 font-mono">SE VOLUME</span><span id="se-vol-display" class="text-cyan-400 font-bold font-mono text-lg">80%</span></div>
+                        <input type="range" id="se-vol-slider" min="0" max="1" step="0.05" value="0.8">
+                    </div>
+                </div>
+                <button onclick="closeSettings()" class="btn-steampunk w-full py-4 mt-8 text-xl font-bold tracking-widest rounded-lg">APPLY & CLOSE</button>
+            </div>
+        </div>
+
+        <!-- Result Screen (ENHANCED) -->
+        <div id="result-screen" class="absolute inset-0 flex flex-col items-center justify-center hidden pointer-events-auto bg-black/95 backdrop-blur-lg z-40 overflow-auto py-6">
+            <!-- Track Name & Difficulty -->
+            <p id="result-track-name" class="text-xl md:text-3xl font-bold text-cyan-300 mb-1 truncate max-w-2xl px-4 text-center">Track Name</p>
+            <p id="result-diff-badge" class="text-xs font-mono mb-5 tracking-widest text-gray-400">── NORMAL ──</p>
+
+            <!-- New Record Banner -->
+            <p id="result-highscore-msg" class="text-yellow-400 font-bold text-xl md:text-2xl mb-4 hidden animate-pulse font-mono tracking-widest" style="text-shadow:0 0 10px yellow;">★ NEW RECORD !! ★</p>
+
+            <!-- Rank + Stats -->
+            <div class="flex items-center gap-8 md:gap-14 mb-6">
+                <div id="result-rank">S</div>
+                <div class="flex flex-col gap-3">
+                    <div>
+                        <p class="text-[10px] text-gray-500 font-mono">FINAL SCORE</p>
+                        <p id="result-score" class="text-cyan-400 font-bold text-3xl md:text-5xl font-mono">0000000</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-gray-500 font-mono">MAX COMBO</p>
+                        <p id="result-combo" class="text-orange-400 font-bold text-2xl md:text-4xl font-mono">0</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-gray-500 font-mono">ACCURACY</p>
+                        <p id="result-accuracy" class="text-green-400 font-bold text-xl font-mono">0.0%</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Judge Breakdown -->
+            <div class="grid grid-cols-4 gap-4 md:gap-8 text-center mb-6 border border-gray-800 rounded-lg p-4 bg-black/40">
+                <div>
+                    <p class="text-purple-400 text-[10px] font-mono mb-1">PERFECT</p>
+                    <p id="result-perfect" class="text-white font-bold text-xl md:text-2xl font-mono">0</p>
+                </div>
+                <div>
+                    <p class="text-cyan-400 text-[10px] font-mono mb-1">GREAT</p>
+                    <p id="result-great" class="text-white font-bold text-xl md:text-2xl font-mono">0</p>
+                </div>
+                <div>
+                    <p class="text-green-400 text-[10px] font-mono mb-1">GOOD</p>
+                    <p id="result-good" class="text-white font-bold text-xl md:text-2xl font-mono">0</p>
+                </div>
+                <div>
+                    <p class="text-red-400 text-[10px] font-mono mb-1">MISS</p>
+                    <p id="result-miss" class="text-white font-bold text-xl md:text-2xl font-mono">0</p>
+                </div>
+            </div>
+
+            <button onclick="returnToMenu()" class="btn-steampunk px-10 py-3 md:py-4 rounded-lg text-lg md:text-xl font-bold tracking-widest">RETURN TO MENU</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+    <div id="judge-container"></div>
+
+    <script>
+    // ==========================================
+    // PLAYLIST
+    // ==========================================
+    const PLAYLIST = [
+        { id:"track_01", title:"乾杯をしよう",    url:"./Musics/KanpaiSyo.mp3" },
+        { id:"track_02", title:"駆動ガール",      url:"./Musics/KudoGirl.mp3" },
+        { id:"track_03", title:"精霊流し",        url:"./Musics/SereiNagasi.mp3" },
+        { id:"track_04", title:"トーキョータワー",url:"./Musics/TokyoTower.mp3" },
+    ];
+
+    const STORAGE_KEY = 'aether_beats_scores_v1';
+
+    function getScores(trackId, diff) {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            let data = raw ? JSON.parse(raw) : {};
+            return data[trackId]?.[diff] ?? [];
+        } catch(e) { return []; }
+    }
+
+    function saveScore(trackId, diff, score) {
+        if (score <= 0) return;
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            let data = raw ? JSON.parse(raw) : {};
+            if (!data[trackId]) data[trackId] = {};
+            if (!data[trackId][diff]) data[trackId][diff] = [];
+            let scores = data[trackId][diff];
+            scores.push(Math.floor(score));
+            scores.sort((a,b) => b-a);
+            data[trackId][diff] = scores.slice(0,5);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch(e) {}
+    }
+
+    // RNG
+    function cyrb128(str) {
+        let h1=1779033703,h2=3144134277,h3=1013904242,h4=2773480762;
+        for(let i=0,k;i<str.length;i++){k=str.charCodeAt(i);h1=h2^Math.imul(h1^k,597399067);h2=h3^Math.imul(h2^k,2869860233);h3=h4^Math.imul(h3^k,951274213);h4=h1^Math.imul(h4^k,2716044179);}
+        h1=Math.imul(h3^(h1>>>18),597399067);h2=Math.imul(h4^(h2>>>22),2869860233);h3=Math.imul(h1^(h3>>>17),951274213);h4=Math.imul(h2^(h4>>>19),2716044179);
+        return (h1^h2^h3^h4)>>>0;
+    }
+    function mulberry32(a) {
+        return function(){ var t=a+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }
+    }
+    let seededRandom = Math.random;
+
+    // ==========================================
+    // CONFIG
+    // ==========================================
+    const config = {
+        lanes: 4,
+        keys: ['d','f','j','k'],
+        difficulty: {
+            easy:   { speed:600,  threshold:2.2,  minInterval:0.35 },
+            normal: { speed:850,  threshold:1.7,  minInterval:0.25 },
+            hard:   { speed:1150, threshold:1.35, minInterval:0.16 },
+            expert: { speed:1450, threshold:1.1,  minInterval:0.11 },
+        },
+        colors: {
+            bg:'#0a0a0c', laneLine:'#1a3a40', targetLine:'#b87333',
+            targetGlow:'#ff5500', noteCore:'#00f3ff', noteBorder:'#b5a642',
+        },
+    };
+
+    // ==========================================
+    // STATE
+    // ==========================================
+    let state = {
+        currentDiff:'normal', speedMultiplier:1.0, bgmVolume:0.8, seVolume:0.8, isPaused:false,
+        selectedTrack:null, isPlaying:false, score:0, combo:0, maxCombo:0, notes:[],
+        audioCtx:null, bgmGainNode:null, seGainNode:null, source:null, buffer:null, startTime:0,
+        gears:[], particles:[], keyState:[false,false,false,false], objectUrlToRevoke:null,
+        // Enhanced
+        judgeCounts: { perfect:0, great:0, good:0, miss:0 },
+        shockwaves: [],    // {x,y,life,color}
+        laneFlash: [0,0,0,0],  // per-lane flash intensity 0-1
+        bgPulse: 0,        // background energy pulse
+        titlePhase: 'title', // 'title'|'booting'|'menu'
+    };
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const judgeContainer = document.getElementById('judge-container');
+
+    // Title stars for background
+    let titleStars = [];
+
+    // ==========================================
+    // UTILITIES
+    // ==========================================
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // ==========================================
+    // INIT
+    // ==========================================
+    window.onload = () => {
+        resize();
+        window.addEventListener('resize', resize);
+        initGears();
+        initTitleStars();
+        setDifficulty('normal');
+        renderTrackList();
+        setupSettings();
+        requestAnimationFrame(gameLoop);
+        // Show title screen first
+        initTitleScreen();
+    };
+
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+
+    function initTitleStars() {
+        titleStars = Array.from({length:90}, () => ({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            speed: 0.2 + Math.random() * 1.2,
+            size: 0.5 + Math.random() * 1.8,
+            opacity: Math.random() * 0.7 + 0.15,
+            color: Math.random() > 0.7 ? 'rgba(184,115,51,' : 'rgba(0,243,255,',
+        }));
+    }
+
+    // ==========================================
+    // TITLE SCREEN
+    // ==========================================
+    function initTitleScreen() {
+        document.getElementById('menu-container').classList.add('hidden');
+        // Title screen is visible by default; listen for any input
+        const handler = () => {
+            if (state.titlePhase !== 'title') return;
+            state.titlePhase = 'booting';
+            document.removeEventListener('keydown', handler);
+            document.getElementById('title-screen').removeEventListener('click', handler);
+            document.getElementById('title-screen').removeEventListener('touchstart', handler);
+            beginTitleTransition();
+        };
+        document.addEventListener('keydown', handler);
+        document.getElementById('title-screen').addEventListener('click', handler);
+        document.getElementById('title-screen').addEventListener('touchstart', handler);
+    }
+
+    async function beginTitleTransition() {
+        const titleScreen  = document.getElementById('title-screen');
+        const bootScreen   = document.getElementById('boot-screen');
+        const overlay      = document.getElementById('transition-overlay');
+
+        // 1. White flash
+        overlay.style.transition = 'opacity 0.07s';
+        overlay.style.opacity = '1';
+        await sleep(70);
+        overlay.style.transition = 'opacity 0.6s';
+        overlay.style.opacity = '0';
+
+        // 2. Title glitches out
+        titleScreen.style.animation = 'titleGlitchOut 0.45s ease-out forwards';
+        await sleep(450);
+        titleScreen.style.display = 'none';
+
+        // 3. Boot screen appears
+        bootScreen.style.display = 'flex';
+        await sleep(10);
+        bootScreen.style.opacity = '1';
+
+        // Boot lines
+        const lines = [
+            { t:'▸ AETHER BEATS SYSTEM v15.0.0',          cls:'header' },
+            { t:'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', cls:'header' },
+            { t:'> Scanning hardware interfaces...',       cls:'' },
+            { t:'  AUDIO SUBSYSTEM ............. [  OK  ]', cls:'ok' },
+            { t:'  RHYTHM PROCESSOR ............ [  OK  ]', cls:'ok' },
+            { t:'  VISUAL RENDERER ............. [  OK  ]', cls:'ok' },
+            { t:'  JUDGMENT ENGINE ............. [  OK  ]', cls:'ok' },
+            { t:'> Initializing note highway...',          cls:'' },
+            { t:'  LANE MATRIX  4 x 1 .......... [  OK  ]', cls:'ok' },
+            { t:'  HIT WINDOW   ±80ms .......... [  OK  ]', cls:'ok' },
+            { t:'> Loading music database...',             cls:'' },
+            { t:`  ${PLAYLIST.length} TRACKS FOUND ........................ [  OK  ]`, cls:'ok' },
+            { t:'> Running self-diagnostics...',           cls:'' },
+            { t:'  COMBO ENGINE ................ [  OK  ]', cls:'ok' },
+            { t:'  PARTICLE SYSTEM ............. [  OK  ]', cls:'ok' },
+            { t:'> All systems nominal.',                  cls:'ok' },
+            { t:'',                                         cls:'' },
+            { t:'▸ ENGAGE MUSIC SEQUENCE',                 cls:'header' },
+        ];
+
+        const container = document.getElementById('boot-lines');
+        container.innerHTML = '';
+
+        for (let i = 0; i < lines.length; i++) {
+            const delayMs = i < 2 ? 40 : (i < 8 ? 90 : 110);
+            await sleep(delayMs);
+            const div = document.createElement('div');
+            div.className = `boot-line ${lines[i].cls}`;
+            div.textContent = lines[i].t || '\u00A0';
+            div.style.opacity = '0';
+            container.appendChild(div);
+            // Stagger fade-in
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                div.style.transition = 'opacity 0.12s';
+                div.style.opacity = '1';
+            }));
+        }
+
+        // Add blinking cursor at the end
+        await sleep(200);
+        const cursorLine = document.createElement('div');
+        cursorLine.className = 'boot-line';
+        cursorLine.innerHTML = '> <span class="boot-cursor"></span>';
+        container.appendChild(cursorLine);
+        cursorLine.style.opacity = '0';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            cursorLine.style.transition = 'opacity 0.1s';
+            cursorLine.style.opacity = '1';
+        }));
+
+        await sleep(700);
+
+        // 4. Flash → reveal menu
+        overlay.style.transition = 'opacity 0.1s';
+        overlay.style.opacity = '1';
+        bootScreen.style.transition = 'opacity 0.1s';
+        bootScreen.style.opacity = '0';
+        await sleep(110);
+
+        bootScreen.style.display = 'none';
+        const menu = document.getElementById('menu-container');
+        menu.classList.remove('hidden');
+        menu.style.opacity = '0';
+        menu.style.transform = 'translateY(28px)';
+
+        overlay.style.transition = 'opacity 0.7s';
+        overlay.style.opacity = '0';
+        await sleep(30);
+        menu.style.transition = 'opacity 0.65s ease-out, transform 0.65s ease-out';
+        menu.style.opacity = '1';
+        menu.style.transform = 'translateY(0)';
+
+        setTimeout(() => {
+            menu.style.transition = '';
+            menu.style.opacity = '';
+            menu.style.transform = '';
+        }, 700);
+
+        state.titlePhase = 'menu';
+    }
+
+    // ==========================================
+    // AUDIO
+    // ==========================================
+    async function initAudioContext() {
+        if (!state.audioCtx) {
+            state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            state.bgmGainNode = state.audioCtx.createGain();
+            state.seGainNode  = state.audioCtx.createGain();
+            state.bgmGainNode.connect(state.audioCtx.destination);
+            state.seGainNode.connect(state.audioCtx.destination);
+            state.bgmGainNode.gain.value = state.bgmVolume;
+            state.seGainNode.gain.value  = state.seVolume;
+        }
+        if (state.audioCtx.state === 'suspended' && !state.isPaused) await state.audioCtx.resume();
+    }
+
+    function playTapSound() {
+        if (!state.audioCtx || state.audioCtx.state !== 'running') return;
+        const osc = state.audioCtx.createOscillator();
+        const gain = state.audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, state.audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, state.audioCtx.currentTime + 0.03);
+        gain.gain.setValueAtTime(0.5, state.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, state.audioCtx.currentTime + 0.05);
+        osc.connect(gain); gain.connect(state.seGainNode);
+        osc.start(); osc.stop(state.audioCtx.currentTime + 0.05);
+    }
+
+    function playPerfectSound() {
+        if (!state.audioCtx || state.audioCtx.state !== 'running') return;
+        const osc = state.audioCtx.createOscillator();
+        const gain = state.audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(900, state.audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, state.audioCtx.currentTime + 0.04);
+        gain.gain.setValueAtTime(0.3, state.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + 0.08);
+        osc.connect(gain); gain.connect(state.seGainNode);
+        osc.start(); osc.stop(state.audioCtx.currentTime + 0.08);
+    }
+
+    // ==========================================
+    // SETTINGS
+    // ==========================================
+    function setupSettings() {
+        document.getElementById('speed-slider').addEventListener('input', e => {
+            state.speedMultiplier = parseFloat(e.target.value);
+            document.getElementById('speed-display').textContent = `x${state.speedMultiplier.toFixed(1)}`;
+        });
+        document.getElementById('bgm-vol-slider').addEventListener('input', e => {
+            state.bgmVolume = parseFloat(e.target.value);
+            document.getElementById('bgm-vol-display').textContent = Math.round(state.bgmVolume*100) + '%';
+            if (state.bgmGainNode) state.bgmGainNode.gain.value = state.bgmVolume;
+        });
+        const seSlider = document.getElementById('se-vol-slider');
+        seSlider.addEventListener('input', e => {
+            state.seVolume = parseFloat(e.target.value);
+            document.getElementById('se-vol-display').textContent = Math.round(state.seVolume*100) + '%';
+            if (state.seGainNode) state.seGainNode.gain.value = state.seVolume;
+        });
+        seSlider.addEventListener('change', () => playTapSound());
+    }
+
+    async function openSettings() {
+        await initAudioContext();
+        document.getElementById('settings-modal').classList.remove('hidden');
+        if (state.isPlaying && state.audioCtx?.state === 'running') {
+            await state.audioCtx.suspend(); state.isPaused = true;
+        }
+    }
+
+    async function closeSettings() {
+        document.getElementById('settings-modal').classList.add('hidden');
+        if (state.isPlaying && state.isPaused && state.audioCtx?.state === 'suspended') {
+            await state.audioCtx.resume(); state.isPaused = false;
+        }
+    }
+
+    // ==========================================
+    // TRACK LIST
+    // ==========================================
+    function renderTrackList() {
+        const list = document.getElementById('track-list');
+        list.innerHTML = '';
+        document.getElementById('track-count').textContent = `${PLAYLIST.length} TRACKS`;
+        PLAYLIST.forEach(track => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-steampunk w-full p-3 flex items-center gap-3 rounded text-left group';
+            btn.innerHTML = `<span class="font-bold truncate text-sm text-white group-hover:text-cyan-300 transition-colors">${track.title}</span>`;
+            btn.onclick = () => selectTrack(track, btn);
+            list.appendChild(btn);
+        });
+    }
+
+    function updateLeaderboardDisplay() {
+        if (!state.selectedTrack) return;
+        const diffDisplay = document.getElementById('leaderboard-diff');
+        diffDisplay.textContent = state.currentDiff.toUpperCase();
+        const colors = { easy:'text-[#00ff88]', normal:'text-[#00f3ff]', hard:'text-[#ffaa00]', expert:'text-[#ff0044]' };
+        diffDisplay.className = `text-sm font-bold tracking-wider ${colors[state.currentDiff]}`;
+        const listEl = document.getElementById('leaderboard-list');
+        listEl.innerHTML = '';
+        const scores = getScores(state.selectedTrack.id, state.currentDiff);
+        if (scores.length === 0) {
+            listEl.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">NO RECORDS YET</div>'; return;
+        }
+        const ranks = ['1ST','2ND','3RD','4TH','5TH'];
+        scores.forEach((score,i) => {
+            const row = document.createElement('div');
+            row.className = `flex justify-between border-b border-gray-800/50 pb-1 pt-1 ${i===0?'text-yellow-400 font-bold':'text-gray-400'}`;
+            const r = document.createElement('span'); r.innerHTML = i===0 ? `👑 ${ranks[i]}` : ranks[i];
+            const s = document.createElement('span'); s.textContent = score.toString().padStart(7,'0');
+            row.appendChild(r); row.appendChild(s); listEl.appendChild(row);
+        });
+    }
+
+    function setDifficulty(diff) {
+        state.currentDiff = diff;
+        ['easy','normal','hard','expert'].forEach(id => {
+            document.getElementById(`diff-${id}`)?.classList.toggle('active', id === diff);
+        });
+        if (state.selectedTrack) updateLeaderboardDisplay();
+    }
+
+    async function selectTrack(track, btnEl) {
+        document.querySelectorAll('#track-list button').forEach(b => b.classList.remove('active'));
+        if (btnEl) btnEl.classList.add('active');
+        document.getElementById('selected-title').textContent = track.title;
+        const statusEl  = document.getElementById('selected-status');
+        const startBtn  = document.getElementById('start-btn');
+        startBtn.disabled = true; statusEl.textContent = 'DOWNLOADING AUDIO DATA...';
+        statusEl.className = 'text-xs font-mono mt-1 text-orange-400';
+        startBtn.textContent = 'PROCESSING...';
+        state.selectedTrack = track;
+        updateLeaderboardDisplay();
+
+        const jacketImg = document.getElementById('jacket-image');
+        const noImgText = document.getElementById('no-image-text');
+        jacketImg.classList.add('hidden'); noImgText.classList.remove('hidden');
+
+        let baseName = '';
+        let fileNameFull = track.id.startsWith('local_') ? track.title : track.url.split('/').pop();
+        baseName = fileNameFull.split('.').slice(0,-1).join('.') || fileNameFull;
+        if (baseName) {
+            const imgJpg = new Image(); imgJpg.src = `./Images/${baseName}.jpg`;
+            imgJpg.onload = () => { jacketImg.src = imgJpg.src; jacketImg.classList.remove('hidden'); noImgText.classList.add('hidden'); };
+            imgJpg.onerror = () => {
+                const imgPng = new Image(); imgPng.src = `./Images/${baseName}.png`;
+                imgPng.onload = () => { jacketImg.src = imgPng.src; jacketImg.classList.remove('hidden'); noImgText.classList.add('hidden'); };
+            };
+        }
+
+        await initAudioContext();
+        try {
+            const response = await fetch(track.url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const buf = await response.arrayBuffer();
+            state.buffer = await state.audioCtx.decodeAudioData(buf);
+            statusEl.textContent = 'DATA READY. WAITING FOR ENGAGE.';
+            statusEl.className = 'text-xs font-mono mt-1 text-cyan-400';
+            startBtn.disabled = false; startBtn.textContent = '4. ENGAGE SYSTEM';
+        } catch(err) {
+            console.error(err);
+            statusEl.textContent = 'ERROR: FAILED TO LOAD AUDIO.';
+            statusEl.className = 'text-xs font-mono mt-1 text-red-500';
+            startBtn.textContent = 'SYSTEM ERROR';
+        }
+    }
+
+    document.getElementById('local-file-input').addEventListener('change', e => {
+        const file = e.target.files[0]; if (!file) return;
+        if (state.objectUrlToRevoke) URL.revokeObjectURL(state.objectUrlToRevoke);
+        const url = URL.createObjectURL(file); state.objectUrlToRevoke = url;
+        selectTrack({ id:'local_'+file.name, title:file.name, url }, null);
+        e.target.value = '';
+    });
+
+    // ==========================================
+    // NOTE GENERATION
+    // ==========================================
+    function generateNotes() {
+        const seed = cyrb128(state.selectedTrack.id + '_' + state.currentDiff);
+        seededRandom = mulberry32(seed);
+        const channelData = state.buffer.getChannelData(0);
+        const sampleRate = state.buffer.sampleRate;
+        const windowSize = Math.floor(sampleRate * 0.02);
+        const diffCfg = config.difficulty[state.currentDiff];
+        state.notes = []; let energies = []; let sumEnergy = 0;
+
+        for (let i = 0; i < channelData.length; i += windowSize) {
+            let sum = 0;
+            for (let j = 0; j < windowSize && i+j < channelData.length; j++) sum += channelData[i+j] * channelData[i+j];
+            const e = Math.sqrt(sum/windowSize); energies.push(e); sumEnergy += e;
+        }
+
+        const avgEnergy = sumEnergy / energies.length;
+        const threshold = avgEnergy * diffCfg.threshold;
+        const strongThreshold = threshold * 1.5;
+        let lastTime = 0, lastLane = Math.floor(seededRandom()*config.lanes);
+        let stairDir = 1, isStair = false, stairCount = 0;
+
+        for (let i = 1; i < energies.length-1; i++) {
+            const time = (i*windowSize)/sampleRate;
+            const e = energies[i];
+            if (e > threshold && e > energies[i-1] && e > energies[i+1]) {
+                if (time - lastTime > diffCfg.minInterval) {
+                    if (e > strongThreshold && state.currentDiff !== 'easy' && seededRandom() > 0.15) {
+                        let l1 = Math.floor(seededRandom()*config.lanes);
+                        let l2 = (l1+1+Math.floor(seededRandom()*(config.lanes-1))) % config.lanes;
+                        state.notes.push({time,lane:l1,hit:false,missed:false});
+                        state.notes.push({time,lane:l2,hit:false,missed:false});
+                        lastLane = l2; isStair = false;
+                    } else {
+                        let nextLane = lastLane;
+                        if (time - lastTime < diffCfg.minInterval*1.8) {
+                            if (!isStair) { isStair=true; stairDir = lastLane===0?1:(lastLane===config.lanes-1?-1:(seededRandom()>0.5?1:-1)); stairCount=0; }
+                            nextLane = lastLane + stairDir;
+                            if (nextLane<0||nextLane>=config.lanes) { stairDir*=-1; nextLane=lastLane+stairDir*2; if(nextLane<0)nextLane=1; if(nextLane>=config.lanes)nextLane=config.lanes-2; }
+                            stairCount++; if(stairCount>5) isStair=false;
+                        } else {
+                            isStair=false; nextLane=Math.floor(seededRandom()*config.lanes);
+                            if(nextLane===lastLane&&seededRandom()>0.4) nextLane=(nextLane+1)%config.lanes;
+                        }
+                        state.notes.push({time,lane:nextLane,hit:false,missed:false});
+                        lastLane = nextLane;
+                    }
+                    lastTime = time;
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // GAME START (with transition)
+    // ==========================================
+    document.getElementById('start-btn').addEventListener('click', async () => {
+        if (!state.buffer) return;
+        await initAudioContext();
+        generateNotes();
+        state.score = 0; state.combo = 0; state.maxCombo = 0;
+        state.particles = []; state.shockwaves = [];
+        state.judgeCounts = { perfect:0, great:0, good:0, miss:0 };
+        state.laneFlash = [0,0,0,0];
+        updateHUD();
+
+        // Menu fade out
+        const menu = document.getElementById('menu-container');
+        menu.style.transition = 'opacity 0.35s, transform 0.35s';
+        menu.style.opacity = '0';
+        menu.style.transform = 'scale(0.96)';
+        await sleep(350);
+        menu.classList.add('hidden');
+        menu.style.transition = ''; menu.style.opacity = ''; menu.style.transform = '';
+
+        // Engage ring effect
+        triggerEngageEffect();
+
+        // Schedule audio (2s lead)
+        const leadTime = 2.0;
+        state.startTime = state.audioCtx.currentTime + leadTime;
+        state.source = state.audioCtx.createBufferSource();
+        state.source.buffer = state.buffer;
+        state.source.connect(state.bgmGainNode);
+        state.source.start(state.startTime);
+        state.source.onended = () => endGame();
+        state.isPlaying = true; state.isPaused = false;
+
+        // Countdown (2 seconds, matches lead time)
+        await showCountdown();
+    });
+
+    function triggerEngageEffect() {
+        const overlay = document.getElementById('engage-overlay');
+        overlay.style.opacity = '1';
+        overlay.innerHTML = '';
+        const ring = document.createElement('div');
+        ring.className = 'engage-ring';
+        ring.style.cssText = `position:absolute;left:50%;top:50%;border-color:var(--neon-cyan);border-width:2px;`;
+        overlay.appendChild(ring);
+        setTimeout(() => { overlay.style.opacity = '0'; overlay.innerHTML = ''; }, 700);
+    }
+
+    async function showCountdown() {
+        const items = [
+            { t:'3', color:'#ffaa00' },
+            { t:'2', color:'#ff5500' },
+            { t:'1', color:'#ff0044' },
+            { t:'GO!!', color:'#00f3ff' },
+        ];
+        for (const item of items) {
+            const el = document.createElement('div');
+            el.className = 'countdown-num';
+            el.style.color = item.color;
+            el.style.textShadow = `0 0 30px ${item.color}, 0 0 60px ${item.color}`;
+            el.textContent = item.t;
+            document.body.appendChild(el);
+            playCountdownBeep(item.t === 'GO!!');
+            await sleep(500);
+            el.remove();
+        }
+    }
+
+    function playCountdownBeep(isGo) {
+        if (!state.audioCtx || state.audioCtx.state !== 'running') return;
+        const osc = state.audioCtx.createOscillator();
+        const gain = state.audioCtx.createGain();
+        osc.type = isGo ? 'square' : 'sine';
+        osc.frequency.value = isGo ? 880 : 440;
+        gain.gain.setValueAtTime(0.4, state.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + (isGo ? 0.3 : 0.12));
+        osc.connect(gain); gain.connect(state.seGainNode);
+        osc.start(); osc.stop(state.audioCtx.currentTime + (isGo ? 0.3 : 0.12));
+    }
+
+    // ==========================================
+    // END GAME
+    // ==========================================
+    function endGame() {
+        state.isPlaying = false;
+        const finalScore = Math.floor(state.score);
+        const rank = calculateRank(state.judgeCounts);
+        const total = state.judgeCounts.perfect + state.judgeCounts.great + state.judgeCounts.good + state.judgeCounts.miss;
+        const accuracy = total > 0
+            ? ((state.judgeCounts.perfect*1.0 + state.judgeCounts.great*0.7 + state.judgeCounts.good*0.3) / total * 100).toFixed(1)
+            : '0.0';
+
+        document.getElementById('result-track-name').textContent = state.selectedTrack.title;
+        document.getElementById('result-diff-badge').textContent = `── ${state.currentDiff.toUpperCase()} ──`;
+        document.getElementById('result-combo').textContent = state.maxCombo;
+        document.getElementById('result-accuracy').textContent = accuracy + '%';
+        document.getElementById('result-perfect').textContent = state.judgeCounts.perfect;
+        document.getElementById('result-great').textContent   = state.judgeCounts.great;
+        document.getElementById('result-good').textContent    = state.judgeCounts.good;
+        document.getElementById('result-miss').textContent    = state.judgeCounts.miss;
+
+        // Rank display (reset first, then set class with animation)
+        const rankEl = document.getElementById('result-rank');
+        rankEl.className = ''; rankEl.style.opacity = '0'; rankEl.textContent = rank;
+
+        const prevScores = getScores(state.selectedTrack.id, state.currentDiff);
+        const isNewRecord = (prevScores.length === 0 || finalScore > prevScores[0]) && finalScore > 0;
+        saveScore(state.selectedTrack.id, state.currentDiff, finalScore);
+
+        const msgEl = document.getElementById('result-highscore-msg');
+        msgEl.classList.toggle('hidden', !isNewRecord);
+
+        document.getElementById('result-screen').classList.remove('hidden');
+
+        // Score count-up
+        animateScoreCount(finalScore);
+
+        // Delayed rank reveal
+        setTimeout(() => {
+            rankEl.className = `rank-${rank}`;
+        }, 400);
+
+        // S rank fireworks
+        if (rank === 'S' || isNewRecord) {
+            setTimeout(() => spawnResultParticles(), 600);
+        }
+    }
+
+    function animateScoreCount(target) {
+        const el = document.getElementById('result-score');
+        const duration = 1600;
+        const start = performance.now();
+        function tick(now) {
+            const p = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1-p, 3);
+            el.textContent = Math.floor(target * eased).toString().padStart(7,'0');
+            if (p < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    }
+
+    function calculateRank(j) {
+        const total = j.perfect + j.great + j.good + j.miss;
+        if (total === 0) return 'D';
+        const acc = (j.perfect*1.0 + j.great*0.7 + j.good*0.3) / total;
+        if (acc >= 0.93) return 'S';
+        if (acc >= 0.75) return 'A';
+        if (acc >= 0.55) return 'B';
+        if (acc >= 0.35) return 'C';
+        return 'D';
+    }
+
+    function spawnResultParticles() {
+        const w = canvas.width, h = canvas.height;
+        const colors = ['#ffd700','#ff5500','#00f3ff','#ff00ff','#00ff88','#ffffff'];
+        for (let i = 0; i < 80; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 3 + Math.random() * 8;
+            state.particles.push({
+                x: w*0.5 + (Math.random()-0.5)*200,
+                y: h*0.5 + (Math.random()-0.5)*150,
+                vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed - 4,
+                life: 1.0,
+                color: colors[Math.floor(Math.random()*colors.length)],
+                size: 3 + Math.random()*5,
+            });
+        }
+    }
+
+    function returnToMenu() {
+        if (state.source) { try { state.source.stop(); } catch(e){} }
+        state.isPlaying = false;
+        const resultScreen = document.getElementById('result-screen');
+        resultScreen.style.transition = 'opacity 0.4s';
+        resultScreen.style.opacity = '0';
+        setTimeout(() => {
+            resultScreen.classList.add('hidden');
+            resultScreen.style.transition = ''; resultScreen.style.opacity = '';
+            updateLeaderboardDisplay();
+            const menu = document.getElementById('menu-container');
+            menu.classList.remove('hidden');
+            menu.style.opacity = '0'; menu.style.transform = 'translateY(20px)';
+            requestAnimationFrame(() => {
+                menu.style.transition = 'opacity 0.5s, transform 0.5s';
+                menu.style.opacity = '1'; menu.style.transform = 'translateY(0)';
+                setTimeout(() => { menu.style.transition = ''; menu.style.opacity = ''; menu.style.transform = ''; }, 520);
+            });
+        }, 400);
+    }
+
+    // ==========================================
+    // INPUT HANDLING
+    // ==========================================
+    function handleInput(laneIndex) {
+        if (!state.isPlaying || state.isPaused) return;
+        const currentTime = state.audioCtx.currentTime - state.startTime;
+        const laneWidth = Math.min(canvas.width*0.22, 120);
+        const startX = (canvas.width - laneWidth*config.lanes) / 2;
+        const hitX = startX + laneIndex*laneWidth + laneWidth/2;
+        const targetY = canvas.height * 0.85;
+
+        spawnParticles(hitX, targetY, config.colors.noteCore, 6);
+
+        const winPerfect=0.08, winGreat=0.15, winGood=0.22;
+        let targetNote = null, minDiff = Infinity;
+        for (const note of state.notes) {
+            if (note.lane === laneIndex && !note.hit && !note.missed) {
+                const diff = Math.abs(note.time - currentTime);
+                if (diff < winGood && diff < minDiff) { minDiff = diff; targetNote = note; }
+            }
+        }
+
+        if (targetNote) {
+            targetNote.hit = true;
+            let text='', points=0, color='';
+            if (minDiff < winPerfect)      { text='PERFECT'; points=1000; color='#ff00ff'; state.judgeCounts.perfect++; playPerfectSound(); }
+            else if (minDiff < winGreat)   { text='GREAT';   points=500;  color='#00f3ff'; state.judgeCounts.great++; }
+            else                           { text='GOOD';    points=100;  color='#00ff88'; state.judgeCounts.good++; }
+
+            state.combo++;
+            if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+            state.score += points + (state.combo * 10);
+
+            // Lane flash
+            state.laneFlash[laneIndex] = 1.0;
+
+            // Shockwave
+            state.shockwaves.push({ x:hitX, y:targetY, life:1.0, color, innerLife:1.0 });
+            // Big burst particles
+            spawnParticles(hitX, targetY, color, text==='PERFECT'?30:18);
+            // BG pulse
+            state.bgPulse = Math.min(state.bgPulse + 0.4, 1.0);
+
+            showJudgement(text, color);
+            checkComboMilestone(state.combo);
+            updateHUD();
+        }
+    }
+
+    window.addEventListener('keydown', e => {
+        const li = config.keys.indexOf(e.key.toLowerCase());
+        if (li !== -1 && !state.keyState[li]) {
+            state.keyState[li] = true;
+            if (!state.isPaused) { playTapSound(); if (state.isPlaying) handleInput(li); }
+        }
+    });
+    window.addEventListener('keyup', e => {
+        const li = config.keys.indexOf(e.key.toLowerCase());
+        if (li !== -1) state.keyState[li] = false;
+    });
+    canvas.addEventListener('touchstart', e => {
+        e.preventDefault(); if (state.isPaused) return;
+        const rect = canvas.getBoundingClientRect();
+        const laneWidth = Math.min(canvas.width*0.22,120);
+        const totalWidth = laneWidth*config.lanes;
+        const startX = (canvas.width-totalWidth)/2;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const x = e.changedTouches[i].clientX - rect.left;
+            if (x >= startX && x <= startX+totalWidth) {
+                const li = Math.floor((x-startX)/laneWidth);
+                state.keyState[li] = true;
+                playTapSound();
+                if (state.isPlaying) handleInput(li);
+                setTimeout(() => { state.keyState[li] = false; }, 50);
+            }
+        }
+    }, {passive:false});
+
+    // ==========================================
+    // VISUAL FEEDBACK
+    // ==========================================
+    const MILESTONES = [10,25,50,100,200,300,500];
+    const MILESTONE_COLORS = { 10:'#00ff88', 25:'#00f3ff', 50:'#ffaa00', 100:'#ff5500', 200:'#ff00ff', 300:'#ffd700', 500:'#ffffff' };
+
+    function checkComboMilestone(combo) {
+        if (!MILESTONES.includes(combo)) return;
+        const color = MILESTONE_COLORS[combo];
+        const el = document.getElementById('combo-milestone');
+        const size = combo >= 100 ? 'clamp(2rem,6vw,4rem)' : 'clamp(1.5rem,4.5vw,3rem)';
+        el.innerHTML = `
+            <div style="color:${color};text-shadow:0 0 20px ${color},0 0 40px ${color};font-size:${size};letter-spacing:0.1em">${combo} COMBO!!</div>
+            <div style="color:${color};font-size:clamp(0.6rem,1.5vw,0.9rem);font-family:'Share Tech Mono',monospace;letter-spacing:0.3em;opacity:0.7;margin-top:4px">
+                ${combo >= 300 ? '★ UNSTOPPABLE ★' : combo >= 100 ? '▸ EXCELLENT ◂' : combo >= 50 ? '▸ CHAIN MASTER ◂' : '▸ KEEP GOING ◂'}
+            </div>`;
+        el.style.animation = 'none'; el.style.opacity = '0';
+        void el.offsetWidth;
+        el.style.animation = 'milestoneAnim 1.8s ease-out forwards';
+    }
+
+    function showMissFlash() {
+        const el = document.getElementById('miss-flash');
+        el.style.animation = 'none'; el.style.opacity = '0';
+        void el.offsetWidth;
+        el.style.animation = 'missFlashAnim 0.4s ease-out forwards';
+    }
+
+    function showJudgement(text, color) {
+        const el = document.createElement('div');
+        el.textContent = text; el.className = 'judgement font-black';
+        el.style.color = color;
+        el.style.textShadow = `0 0 20px ${color}, 0 0 40px ${color}`;
+        if (text === 'PERFECT') {
+            el.style.fontSize = '4rem';
+            el.style.letterSpacing = '0.05em';
+        } else if (text === 'MISS') {
+            el.style.fontSize = '3rem';
+            el.style.filter = 'blur(1px)';
+        }
+        judgeContainer.appendChild(el);
+        setTimeout(() => el.remove(), 550);
+    }
+
+    function updateHUD() {
+        document.getElementById('score-display').textContent = Math.floor(state.score).toString().padStart(7,'0');
+        const comboEl = document.getElementById('combo-display');
+        comboEl.textContent = state.combo;
+        comboEl.style.transform = 'scale(1.45)';
+        comboEl.style.textShadow = state.combo > 100
+            ? `0 0 20px #ffd700, 0 0 40px #ffd700`
+            : `0 0 10px var(--neon-cyan)`;
+        setTimeout(() => { comboEl.style.transform = 'scale(1)'; comboEl.style.textShadow = '0 0 10px var(--neon-cyan)'; }, 110);
+    }
+
+    function spawnParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            state.particles.push({
+                x, y,
+                vx: (Math.random()-0.5)*14,
+                vy: (Math.random()-0.5)*14 - 4,
+                life: 1.0, color,
+                size: 2 + Math.random()*3,
+            });
+        }
+    }
+
+    // ==========================================
+    // GEARS
+    // ==========================================
+    function initGears() {
+        state.gears = Array.from({length:15}, () => ({
+            x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight,
+            r: 40+Math.random()*100, speed:(Math.random()-0.5)*0.005,
+            angle: Math.random()*Math.PI*2,
+            color: Math.random()>0.5 ? 'rgba(184,115,51,0.09)' : 'rgba(181,166,66,0.09)',
+            teeth: 6+Math.floor(Math.random()*6),
+        }));
+    }
+
+    function drawGear(g) {
+        ctx.save(); ctx.translate(g.x, g.y); ctx.rotate(g.angle);
+        ctx.fillStyle = g.color; ctx.beginPath();
+        // Outer ring
+        ctx.arc(0,0,g.r,0,Math.PI*2);
+        // Teeth
+        for (let i=0; i<g.teeth; i++) {
+            const a = (i/g.teeth)*Math.PI*2;
+            ctx.rect(
+                Math.cos(a)*g.r*0.9 - g.r*0.12,
+                Math.sin(a)*g.r*0.9 - g.r*0.12,
+                g.r*0.24, g.r*0.24
+            );
+        }
+        ctx.fill();
+        ctx.fillStyle = config.colors.bg;
+        ctx.beginPath(); ctx.arc(0,0,g.r*0.4,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+
+    // ==========================================
+    // MAIN GAME LOOP
+    // ==========================================
+    function gameLoop() {
+        // Background
+        const bgPulseAlpha = state.bgPulse > 0 ? state.bgPulse * 0.08 : 0;
+        if (bgPulseAlpha > 0) {
+            ctx.fillStyle = `rgba(0,40,50,${bgPulseAlpha})`;
+        } else {
+            ctx.fillStyle = config.colors.bg;
+        }
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (!state.isPaused && state.bgPulse > 0) state.bgPulse = Math.max(0, state.bgPulse - 0.03);
+
+        // Title stars (when not playing)
+        if (!state.isPlaying) {
+            titleStars.forEach(star => {
+                if (!state.isPaused) { star.y += star.speed; if (star.y > canvas.height) { star.y = -2; star.x = Math.random()*canvas.width; } }
+                ctx.globalAlpha = star.opacity * 0.6;
+                ctx.fillStyle = star.color + '0.8)';
+                ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI*2); ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        // Gears
+        state.gears.forEach(g => {
+            if (!state.isPaused) g.angle += g.speed;
+            drawGear(g);
+        });
+
+        if (state.isPlaying) {
+            const currentTime = state.audioCtx.currentTime - state.startTime;
+            const laneWidth = Math.min(canvas.width*0.22, 120);
+            const totalWidth = laneWidth * config.lanes;
+            const startX = (canvas.width - totalWidth) / 2;
+            const targetY = canvas.height * 0.85;
+            const speed = config.difficulty[state.currentDiff].speed * state.speedMultiplier;
+
+            // Lane background
+            ctx.fillStyle = 'rgba(10,18,22,0.85)';
+            ctx.fillRect(startX, 0, totalWidth, canvas.height);
+
+            // Lane lines
+            ctx.strokeStyle = config.colors.laneLine; ctx.lineWidth = 1;
+            for (let i=0; i<=config.lanes; i++) {
+                ctx.beginPath();
+                ctx.moveTo(startX + i*laneWidth, 0);
+                ctx.lineTo(startX + i*laneWidth, canvas.height);
+                ctx.stroke();
+            }
+
+            // Lane key press flash
+            for (let i=0; i<config.lanes; i++) {
+                const flash = state.laneFlash[i];
+                if (flash > 0) {
+                    const grad = ctx.createLinearGradient(0, targetY, 0, 0);
+                    grad.addColorStop(0, `rgba(0,243,255,${flash*0.35})`);
+                    grad.addColorStop(1, `rgba(0,243,255,0)`);
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(startX + i*laneWidth, 0, laneWidth, targetY);
+                    if (!state.isPaused) state.laneFlash[i] = Math.max(0, flash - 0.08);
+                }
+                if (state.keyState[i]) {
+                    ctx.fillStyle = 'rgba(0,243,255,0.12)';
+                    ctx.fillRect(startX + i*laneWidth, 0, laneWidth, targetY);
+                }
+                // Key labels
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.font = '20px "Share Tech Mono"'; ctx.textAlign = 'center';
+                ctx.fillText(config.keys[i].toUpperCase(), startX + i*laneWidth + laneWidth/2, targetY + 34);
+            }
+
+            // Target line
+            ctx.shadowBlur = 25; ctx.shadowColor = config.colors.targetGlow;
+            ctx.fillStyle = config.colors.targetLine;
+            ctx.fillRect(startX, targetY-4, totalWidth, 8);
+            // Extra glow line
+            ctx.shadowBlur = 10; ctx.shadowColor = '#fff';
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillRect(startX, targetY-1, totalWidth, 2);
+            ctx.shadowBlur = 0;
+
+            // Notes
+            state.notes.forEach(note => {
+                if (note.hit) return;
+                const yPos = targetY - (note.time - currentTime) * speed;
+                const xPos = startX + note.lane*laneWidth + laneWidth/2;
+
+                if (yPos > canvas.height+50 && !note.missed) {
+                    note.missed = true; state.combo = 0;
+                    state.judgeCounts.miss++;
+                    showJudgement('MISS', '#ff0044');
+                    showMissFlash();
+                    updateHUD();
+                }
+
+                if (yPos > -50 && yPos < canvas.height+50 && !note.missed) {
+                    // Trail (behind the note in travel direction)
+                    for (let t=1; t<=5; t++) {
+                        const ty = yPos - t*11;
+                        const alpha = (6-t) / 16;
+                        const r = laneWidth * (0.21 - t*0.025);
+                        if (r <= 0) continue;
+                        ctx.globalAlpha = alpha;
+                        ctx.shadowBlur = 6; ctx.shadowColor = config.colors.noteCore;
+                        ctx.beginPath(); ctx.arc(xPos, ty, r, 0, Math.PI*2);
+                        ctx.fillStyle = config.colors.noteCore; ctx.fill();
+                    }
+                    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+                    // Note body
+                    ctx.shadowBlur = 15; ctx.shadowColor = config.colors.noteCore;
+                    ctx.beginPath(); ctx.arc(xPos, yPos, laneWidth*0.31, 0, Math.PI*2);
+                    ctx.fillStyle = config.colors.noteBorder; ctx.fill();
+                    ctx.beginPath(); ctx.arc(xPos, yPos, laneWidth*0.20, 0, Math.PI*2);
+                    ctx.fillStyle = config.colors.noteCore; ctx.fill();
+                    // Inner highlight
+                    ctx.beginPath(); ctx.arc(xPos - laneWidth*0.06, yPos - laneWidth*0.06, laneWidth*0.07, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            });
+
+            // Shockwaves
+            for (let i = state.shockwaves.length-1; i >= 0; i--) {
+                const s = state.shockwaves[i];
+                if (!state.isPaused) s.life -= 0.045;
+                if (s.life <= 0) { state.shockwaves.splice(i,1); continue; }
+                const r = (1 - s.life) * 75;
+                const r2 = (1 - s.life) * 120;
+                // Outer ring
+                ctx.beginPath(); ctx.arc(s.x, s.y, r2, 0, Math.PI*2);
+                ctx.strokeStyle = s.color; ctx.lineWidth = 1.5;
+                ctx.globalAlpha = s.life * 0.4;
+                ctx.shadowBlur = 8; ctx.shadowColor = s.color; ctx.stroke();
+                // Inner ring
+                ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI*2);
+                ctx.lineWidth = 2.5; ctx.globalAlpha = s.life * 0.8;
+                ctx.shadowBlur = 15; ctx.stroke();
+                ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+            }
+        }
+
+        // Particles (always)
+        for (let i = state.particles.length-1; i >= 0; i--) {
+            const p = state.particles[i];
+            if (!state.isPaused) { p.x += p.vx; p.y += p.vy; p.vy += 0.22; p.life -= 0.028; }
+            if (p.life <= 0) { state.particles.splice(i,1); continue; }
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.shadowBlur = 10; ctx.shadowColor = p.color;
+            ctx.beginPath(); ctx.arc(p.x, p.y, (p.size||4)*p.life, 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    </script>
+</body>
+</html>
