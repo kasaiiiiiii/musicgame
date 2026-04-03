@@ -1,0 +1,371 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+/* ============================================================
+   CSS VARIABLES
+============================================================ */
+:root {
+    --neon-cyan:   #00f3ff;
+    --neon-orange: #ff5500;
+    --brass:       #b5a642;
+    --copper:      #b87333;
+    --bg-dark:     #0a0a0c;
+    --bg-panel:    rgba(10, 10, 12, 0.9);
+    --diff-easy:   #00ff88;
+    --diff-normal: #00f3ff;
+    --diff-hard:   #ffaa00;
+    --diff-expert: #ff0044;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: var(--bg-dark);
+    color: var(--neon-cyan);
+    font-family: 'Orbitron', sans-serif;
+    user-select: none;
+    touch-action: none;
+}
+
+canvas {
+    display: block;
+    position: absolute;
+    top: 0; left: 0;
+    z-index: 1;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.pointer-events-auto { pointer-events: auto; }
+.score-glow  { text-shadow: 0 0 10px var(--neon-orange), 0 0 20px var(--neon-orange); color: var(--neon-orange); }
+.hud-text    { text-shadow: 0 0 10px var(--neon-cyan); }
+
+/* ============================================================
+   BUTTONS
+============================================================ */
+.btn-steampunk {
+    background: linear-gradient(45deg, #1f110c, #2a1810);
+    border: 2px solid var(--copper);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 10px rgba(184, 115, 51, 0.3);
+    transition: all 0.2s ease;
+    font-family: 'Share Tech Mono', monospace;
+    cursor: pointer;
+}
+.btn-steampunk:hover:not(:disabled) {
+    background: linear-gradient(45deg, #2a1810, #3a2215);
+    box-shadow: 0 0 15px var(--neon-cyan);
+    transform: translateY(-2px);
+}
+.btn-steampunk.active {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
+    background: rgba(0, 243, 255, 0.1);
+    color: #fff;
+}
+.btn-steampunk:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(100%);
+    transform: none;
+}
+
+/* Difficulty button active states */
+#diff-easy.active   { border-color: var(--diff-easy);   box-shadow: 0 0 20px rgba(0,255,136,0.5);  background: rgba(0,255,136,0.1);  color: #fff; }
+#diff-normal.active { border-color: var(--diff-normal); box-shadow: 0 0 20px rgba(0,243,255,0.5);  background: rgba(0,243,255,0.1);  color: #fff; }
+#diff-hard.active   { border-color: var(--diff-hard);   box-shadow: 0 0 20px rgba(255,170,0,0.5);  background: rgba(255,170,0,0.1);  color: #fff; }
+#diff-expert.active { border-color: var(--diff-expert); box-shadow: 0 0 20px rgba(255,0,68,0.5);   background: rgba(255,0,68,0.1);   color: #fff; }
+
+/* ============================================================
+   RANGE INPUTS
+============================================================ */
+input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
+    background: var(--neon-cyan); cursor: pointer; margin-top: -7px;
+    box-shadow: 0 0 10px var(--neon-cyan);
+}
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%; height: 4px; cursor: pointer; background: var(--copper); border-radius: 2px;
+}
+
+/* ============================================================
+   JUDGEMENT TEXT
+============================================================ */
+@keyframes popOut {
+    0%   { transform: translate(-50%, -50%) scale(0.5);  opacity: 1; }
+    50%  { transform: translate(-50%, -65%) scale(1.3);  opacity: 1; }
+    100% { transform: translate(-50%, -80%) scale(1.1);  opacity: 0; }
+}
+.judgement {
+    position: absolute; left: 50%; top: 60%;
+    transform: translate(-50%, -50%);
+    font-size: 3.5rem; font-weight: 900;
+    pointer-events: none; opacity: 0;
+    z-index: 20;
+    animation: popOut 0.55s ease-out forwards;
+    font-family: 'Orbitron', sans-serif;
+}
+
+/* ============================================================
+   SCROLLBAR
+============================================================ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--copper); border-radius: 3px; }
+
+/* ============================================================
+   SCANLINES (always visible)
+============================================================ */
+.scanlines {
+    position: fixed; inset: 0; pointer-events: none; z-index: 800;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent, transparent 2px,
+        rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px
+    );
+    animation: scanMove 10s linear infinite;
+}
+@keyframes scanMove { from { background-position: 0 0; } to { background-position: 0 200px; } }
+
+.scan-sweep {
+    position: fixed; left: 0; width: 100%; height: 2px;
+    background: linear-gradient(to right, transparent 0%, rgba(0,243,255,0.5) 50%, transparent 100%);
+    z-index: 801; pointer-events: none;
+    animation: sweepDown 7s linear infinite;
+}
+@keyframes sweepDown {
+    0%   { top: -5px;   opacity: 0; }
+    3%   { opacity: 1; }
+    97%  { opacity: 0.6; }
+    100% { top: 100vh;  opacity: 0; }
+}
+
+/* ============================================================
+   TRANSITION OVERLAY
+============================================================ */
+#transition-overlay {
+    position: fixed; inset: 0; z-index: 900;
+    pointer-events: none; opacity: 0; background: white;
+}
+
+/* ============================================================
+   MISS FLASH
+============================================================ */
+#miss-flash {
+    position: fixed; inset: 0; z-index: 16; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(255,0,68,0.5) 100%);
+}
+@keyframes missFlashAnim { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ============================================================
+   COMBO MILESTONE
+============================================================ */
+#combo-milestone {
+    position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%);
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    pointer-events: none; z-index: 25; opacity: 0;
+    text-align: center; white-space: nowrap;
+}
+@keyframes milestoneAnim {
+    0%   { transform: translate(-50%, -50%) scale(0.3);  opacity: 0; }
+    18%  { transform: translate(-50%, -50%) scale(1.25); opacity: 1; }
+    40%  { transform: translate(-50%, -50%) scale(0.98); opacity: 1; }
+    75%  { transform: translate(-50%, -50%) scale(1.0);  opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.05); opacity: 0; }
+}
+
+/* ============================================================
+   TITLE SCREEN
+============================================================ */
+#title-screen {
+    position: absolute; inset: 0; z-index: 90;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(10, 10, 12, 0.82);
+    pointer-events: auto;
+}
+@keyframes titleGlitchOut {
+    0%   { opacity: 1; transform: none;                           filter: none; }
+    15%  { opacity: 1; transform: translateX(-8px) skewX(-3deg); filter: hue-rotate(90deg) brightness(1.5); }
+    30%  { opacity: 1; transform: translateX(8px)  skewX(3deg);  filter: hue-rotate(200deg); }
+    50%  { opacity: 0.6; transform: scaleY(1.08);                filter: brightness(2.5); }
+    70%  { opacity: 0.3; transform: scaleY(0.9) skewX(-2deg); }
+    85%  { opacity: 0.1; transform: scaleY(0.2); }
+    100% { opacity: 0;   transform: scaleY(0); }
+}
+
+.title-logo-wrap { position: relative; text-align: center; margin-bottom: 0.5rem; }
+
+.title-logo {
+    font-size: clamp(2.8rem, 9.5vw, 7.5rem);
+    font-weight: 900; color: var(--copper); letter-spacing: 0.04em;
+    font-family: 'Orbitron', sans-serif;
+    text-shadow: 0 0 20px var(--neon-orange), 0 0 60px rgba(255,85,0,0.25), 0 0 100px rgba(255,85,0,0.1);
+    animation: titleFloat 3.5s ease-in-out infinite;
+    position: relative;
+}
+@keyframes titleFloat {
+    0%, 100% { transform: translateY(0);    filter: brightness(1);   }
+    50%       { transform: translateY(-9px); filter: brightness(1.2); }
+}
+
+.title-logo-glitch {
+    position: absolute; top: 0; left: 0; width: 100%;
+    font-size: clamp(2.8rem, 9.5vw, 7.5rem); font-weight: 900;
+    letter-spacing: 0.04em; font-family: 'Orbitron', sans-serif; opacity: 0;
+}
+.title-logo-glitch.g1 { color: #00f3ff; animation: glitch1 6s infinite steps(1) 0.3s; }
+.title-logo-glitch.g2 { color: #ff0044; animation: glitch2 6s infinite steps(1) 1.8s; }
+
+@keyframes glitch1 {
+    0%, 88%, 100% { opacity: 0; transform: translate(0);        clip-path: none; }
+    89% { opacity: .75; transform: translate(-5px,  2px); clip-path: inset( 8% 0 70% 0); }
+    90% { opacity: .75; transform: translate( 5px, -2px); clip-path: inset(55% 0  8% 0); }
+    91% { opacity: .5;  transform: translate(-2px,  0);   clip-path: inset(28% 0 38% 0); }
+    92% { opacity: 0; }
+    94% { opacity: .4;  transform: translate( 3px,  1px); clip-path: inset( 3% 0 83% 0); }
+    95% { opacity: 0; }
+}
+@keyframes glitch2 {
+    0%, 91%, 100% { opacity: 0; transform: translate(0);        clip-path: none; }
+    92% { opacity: .65; transform: translate( 6px,  0);   clip-path: inset(38% 0 28% 0); }
+    93% { opacity: .65; transform: translate(-6px,  1px); clip-path: inset(65% 0  8% 0); }
+    94% { opacity: 0; }
+    96% { opacity: .4;  transform: translate( 2px, -1px); clip-path: inset(18% 0 58% 0); }
+    97% { opacity: 0; }
+}
+
+.title-subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(0.5rem, 1.5vw, 0.85rem);
+    color: var(--neon-cyan); letter-spacing: 0.5em; margin-top: 0.6rem;
+    text-shadow: 0 0 8px var(--neon-cyan); opacity: 0.8;
+}
+
+.title-decoration { display: flex; align-items: center; gap: 1rem; margin: 1.8rem 0 1.2rem; }
+.title-line       { height: 1px; width: clamp(50px, 9vw, 110px); background: linear-gradient(to right, transparent, var(--copper)); }
+.title-line.right { background: linear-gradient(to left, transparent, var(--copper)); }
+.title-diamond {
+    width: 9px; height: 9px; background: var(--copper); transform: rotate(45deg);
+    box-shadow: 0 0 8px var(--neon-orange); animation: diamondPulse 1.6s ease-in-out infinite;
+}
+@keyframes diamondPulse {
+    0%, 100% { transform: rotate(45deg) scale(1);   box-shadow: 0 0  8px var(--neon-orange); }
+    50%       { transform: rotate(45deg) scale(1.6); box-shadow: 0 0 22px var(--neon-orange); }
+}
+
+@keyframes pressStart { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.press-start-text {
+    animation: pressStart 1.3s infinite;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px var(--neon-cyan), 0 0 22px rgba(0,243,255,0.3);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(0.65rem, 1.8vw, 0.95rem); letter-spacing: 0.3em;
+}
+.title-version {
+    position: absolute; bottom: 4%;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+    color: rgba(184, 115, 51, 0.45); letter-spacing: 0.2em;
+}
+
+.title-chord { display: flex; gap: 3px; margin-top: 1.5rem; }
+.title-chord span {
+    display: block; width: 3px; background: var(--copper); opacity: 0.5;
+    animation: chordPulse 2s ease-in-out infinite;
+}
+@keyframes chordPulse {
+    0%, 100% { height: 12px; opacity: 0.4; }
+    50%       { height: 28px; opacity: 0.9; }
+}
+
+/* ============================================================
+   BOOT SCREEN
+============================================================ */
+#boot-screen {
+    position: absolute; inset: 0; z-index: 89;
+    background: #000; display: none; flex-direction: column;
+    justify-content: center; padding: 8%; opacity: 0;
+    transition: opacity 0.3s;
+}
+.boot-line {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(0.52rem, 1.15vw, 0.78rem); margin: 1.5px 0; opacity: 0;
+    color: #00f3ff;
+}
+.boot-line.ok     { color: #00ff88; }
+.boot-line.warn   { color: #ffaa00; }
+.boot-line.header { color: var(--copper); font-size: clamp(0.65rem, 1.3vw, 0.95rem); margin-bottom: 6px; }
+.boot-cursor {
+    display: inline-block; width: 10px; height: 1.2em;
+    background: #00f3ff; vertical-align: middle;
+    animation: blinkCursor 0.8s step-end infinite;
+}
+@keyframes blinkCursor { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* ============================================================
+   RESULT SCREEN — RANK
+============================================================ */
+#result-rank {
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: clamp(5rem, 18vw, 10rem); opacity: 0; display: block;
+}
+@keyframes rankReveal {
+    0%   { transform: scale(3);    opacity: 0; filter: blur(30px); }
+    55%  { transform: scale(0.88); opacity: 1; filter: blur(0); }
+    72%  { transform: scale(1.08); }
+    86%  { transform: scale(0.97); }
+    100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes rankGolden {
+    0%   { transform: scale(3);    opacity: 0; filter: blur(30px); }
+    55%  { transform: scale(0.88); opacity: 1; filter: blur(0); }
+    72%  { transform: scale(1.1); }
+    86%  { transform: scale(0.97); }
+    100% { transform: scale(1);    opacity: 1; filter: drop-shadow(0 0 30px #ffd700); }
+}
+.rank-S { color: #ffd700; text-shadow: 0 0 40px #ffd700, 0 0 80px rgba(255,215,0,0.35); animation: rankGolden 0.9s  ease-out forwards !important; }
+.rank-A { color: #00f3ff; text-shadow: 0 0 30px #00f3ff;                                animation: rankReveal 0.85s ease-out forwards !important; }
+.rank-B { color: #00ff88; text-shadow: 0 0 20px #00ff88;                                animation: rankReveal 0.85s ease-out forwards !important; }
+.rank-C { color: #ffaa00; text-shadow: 0 0 20px #ffaa00;                                animation: rankReveal 0.85s ease-out forwards !important; }
+.rank-D { color: #ff0044; text-shadow: 0 0 20px #ff0044;                                animation: rankReveal 0.85s ease-out forwards !important; }
+
+/* ============================================================
+   COUNTDOWN
+============================================================ */
+.countdown-num {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: clamp(5rem, 18vw, 10rem);
+    pointer-events: none; z-index: 50; opacity: 0;
+    animation: countdownPop 0.5s ease-out forwards;
+}
+@keyframes countdownPop {
+    0%   { transform: translate(-50%, -50%) scale(1.8);  opacity: 0; }
+    30%  { transform: translate(-50%, -50%) scale(0.95); opacity: 1; }
+    65%  { transform: translate(-50%, -50%) scale(1.0);  opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.05); opacity: 0; }
+}
+
+/* ============================================================
+   ENGAGE RING (game-start transition)
+============================================================ */
+#engage-overlay {
+    position: fixed; inset: 0; z-index: 700; pointer-events: none;
+    opacity: 0; display: flex; align-items: center; justify-content: center;
+}
+.engage-ring {
+    position: absolute; border: 2px solid var(--neon-cyan); border-radius: 50%;
+    animation: engageRingExpand 0.6s ease-out forwards;
+}
+@keyframes engageRingExpand {
+    0%   { width:  50px;  height:  50px;  opacity: 1; transform: translate(-50%, -50%); }
+    100% { width: 300vw;  height: 300vh;  opacity: 0; transform: translate(-50%, -50%); }
+}
