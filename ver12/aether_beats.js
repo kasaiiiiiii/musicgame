@@ -439,11 +439,11 @@ async function selectTrack(track, btnEl) {
     const baseName     = fileNameFull.split('.').slice(0, -1).join('.') || fileNameFull;
     if (baseName) {
         const imgJpg = new Image();
-        imgJpg.src    = `./Images/${baseName}.jpg`;
+        imgJpg.src    = `../Images/${baseName}.jpg`;
         imgJpg.onload = () => { jacketImg.src = imgJpg.src; jacketImg.classList.remove('hidden'); noImgText.classList.add('hidden'); };
         imgJpg.onerror = () => {
             const imgPng = new Image();
-            imgPng.src    = `./Images/${baseName}.png`;
+            imgPng.src    = `../Images/${baseName}.png`;
             imgPng.onload = () => { jacketImg.src = imgPng.src; jacketImg.classList.remove('hidden'); noImgText.classList.add('hidden'); };
         };
     }
