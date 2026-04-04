@@ -1044,12 +1044,6 @@ function gameLoop() {
         }
 
         ctx.save();
-        // コンボが10以上の時、コンボ数に応じて赤熱して発光させる
-        if (state.combo >= 10) {
-            ctx.shadowBlur = 10 + (comboRatio * 25); // コンボに応じて光が強くなる
-            ctx.shadowColor = '#ff3300';             // 激しい赤熱色（オレンジ〜赤）
-        }
-
         drawGear(g);
         ctx.restore();
     });
