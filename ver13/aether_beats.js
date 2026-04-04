@@ -2,7 +2,7 @@
 // PLAYLIST
 // ==========================================
 const PLAYLIST = [
-    { id: 'track_01', title: '乾杯をしよう',     url: '../Musics/KanpaiSyo.mp3'   },
+    { id: 'track_01', title: '乾杯をしよう',     url: '../Musics/KanpaiSyo.wav'   },
     { id: 'track_02', title: '駆動ガール',       url: '../Musics/KudoGirl.mp3'    },
     { id: 'track_03', title: '精霊流し',         url: '../Musics/SereiNagasi.mp3' },
     { id: 'track_04', title: 'トーキョータワー', url: '../Musics/TokyoTower.mp3'  },
