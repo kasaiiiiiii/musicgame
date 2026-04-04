@@ -202,7 +202,7 @@ async function beginTitleTransition() {
     bootScreen.style.opacity = '1';
 
     const lines = [
-        { t: '▸ AETHER BEATS SYSTEM v13.0.0',           cls: 'header' },
+        { t: '▸ AETHER BEATS SYSTEM v15.0.0',           cls: 'header' },
         { t: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',  cls: 'header' },
         { t: '> Scanning hardware interfaces...',        cls: '' },
         { t: '  AUDIO SUBSYSTEM ............. [  OK  ]', cls: 'ok' },
@@ -1040,7 +1040,10 @@ function gameLoop() {
         const totalWidth  = laneWidth * config.lanes;
         const startX      = (canvas.width - totalWidth) / 2;
         const targetY     = canvas.height * 0.85;
-        const speed       = config.difficulty[state.currentDiff].speed * state.speedMultiplier;
+        
+        // 【修正ポイント】固定のピクセル速度ではなく、画面の高さ（800pxを基準）に合わせた相対速度に変更！
+        const baseSpeed = config.difficulty[state.currentDiff].speed;
+        const speed     = (baseSpeed / 800) * canvas.height * state.speedMultiplier;
 
         // Lane background
         ctx.fillStyle = 'rgba(10,18,22,0.85)';
