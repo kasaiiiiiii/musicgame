@@ -1002,20 +1002,6 @@ function drawGear(g) {
     ctx.fillStyle = config.colors.bg;
     ctx.beginPath();
     ctx.arc(0, 0, g.r * 0.4, 0, Math.PI * 2);
-
-    // ==========================================
-    // 追加するコード（drawGear関数の中）
-    // ==========================================
-            
-        // --- コンボ連動：赤熱カラーへの変化 ---
-        if (state.combo >= 10) {
-            const comboRatio = Math.min(state.combo / 50, 1.0);
-            // 赤〜オレンジ系の色を計算して、元の色を上書きする
-            ctx.fillStyle = `rgba(255, ${100 - comboRatio * 100}, 0, ${0.4 + comboRatio * 0.4})`;
-            ctx.strokeStyle = `rgba(255, ${150 - comboRatio * 100}, 50, 0.8)`;
-        }
-        // ------------------------------------
-    
     ctx.fill();
     ctx.restore();
 }
