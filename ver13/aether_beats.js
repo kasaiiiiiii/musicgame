@@ -1002,6 +1002,20 @@ function drawGear(g) {
     ctx.fillStyle = config.colors.bg;
     ctx.beginPath();
     ctx.arc(0, 0, g.r * 0.4, 0, Math.PI * 2);
+
+    // ==========================================
+    // 追加するコード（drawGear関数の中）
+    // ==========================================
+            
+        // --- コンボ連動：赤熱カラーへの変化 ---
+        if (state.combo >= 10) {
+            const comboRatio = Math.min(state.combo / 50, 1.0);
+            // 赤〜オレンジ系の色を計算して、元の色を上書きする
+            ctx.fillStyle = `rgba(255, ${100 - comboRatio * 100}, 0, ${0.4 + comboRatio * 0.4})`;
+            ctx.strokeStyle = `rgba(255, ${150 - comboRatio * 100}, 50, 0.8)`;
+        }
+        // ------------------------------------
+    
     ctx.fill();
     ctx.restore();
 }
@@ -1029,9 +1043,29 @@ function gameLoop() {
     }
 
     // ── Gears ──
+    // コンボ数に応じてギアのエフェクトを計算 (最大50コンボでMAX)
+    const comboRatio = Math.min(state.combo / 50, 1.0);
+    // スピードは最大3倍に加速
+    const gearSpeedMult = 1.0 + (comboRatio * 2.0);
+
     state.gears.forEach(g => {
-        if (!state.isPaused) g.angle += g.speed;
+        // 元の基本スピードを初回だけ保存しておく
+        if (g.baseSpeed === undefined) g.baseSpeed = g.speed;
+
+        // コンボ倍率をかけて回転させる
+        if (!state.isPaused) {
+            g.angle += g.baseSpeed * gearSpeedMult;
+        }
+
+        ctx.save();
+        // コンボが10以上の時、コンボ数に応じて赤熱して発光させる
+        if (state.combo >= 10) {
+            ctx.shadowBlur = 10 + (comboRatio * 25); // コンボに応じて光が強くなる
+            ctx.shadowColor = '#ff3300';             // 激しい赤熱色（オレンジ〜赤）
+        }
+
         drawGear(g);
+        ctx.restore();
     });
 
     // ── Gameplay ──
