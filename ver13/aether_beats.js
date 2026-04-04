@@ -328,7 +328,8 @@ function triggerGoldConfetti() {
 // ==========================================
 async function initAudioContext() {
     if (!state.audioCtx) {
-        state.audioCtx    = new (window.AudioContext || window.webkitAudioContext)();
+        // ↓ここを変更します！（かっこの中に { sampleRate: 44100 } を追加）
+        state.audioCtx    = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
         state.bgmGainNode = state.audioCtx.createGain();
         state.seGainNode  = state.audioCtx.createGain();
         state.bgmGainNode.connect(state.audioCtx.destination);
