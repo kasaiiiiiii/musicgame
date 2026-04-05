@@ -1009,7 +1009,7 @@ function gameLoop() {
 
             if (yPos > -50 && yPos < canvas.height + 50 && !note.missed) {
                 // Trail
-                for (let t = 1; t <= 5; t++) {
+                for (let t = 1; t <= 2; t++) {
                     const r = laneWidth * (0.21 - t * 0.025);
                     if (r <= 0) continue;
                     ctx.globalAlpha = (6 - t) / 16;
