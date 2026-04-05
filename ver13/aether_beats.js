@@ -1039,21 +1039,24 @@ function gameLoop() {
 
     // ── Gears ──
     // コンボ数に応じてギアのエフェクトを計算 (最大50コンボでMAX)
+    if (state.visualQuality === 'high') {
     const comboRatio = Math.min(state.combo / 50, 1.0);
-    // スピードは最大3倍に加速
-    const gearSpeedMult = 1.0 + (comboRatio * 2.0);
-
-    state.gears.forEach(g => {
-        // 元の基本スピードを初回だけ保存しておく
-        if (g.baseSpeed === undefined) g.baseSpeed = g.speed;
-
-        // コンボ倍率をかけて回転させる
-        if (!state.isPaused) {
-            g.angle += g.baseSpeed * gearSpeedMult;
-        }
-
+        // スピードは最大3倍に加速
+        const gearSpeedMult = 1.0 + (comboRatio * 2.0);
+    
+        state.gears.forEach(g => {
+            // 元の基本スピードを初回だけ保存しておく
+            if (g.baseSpeed === undefined) g.baseSpeed = g.speed;
+    
+            // コンボ倍率をかけて回転させる
+            if (!state.isPaused) {
+                g.angle += g.baseSpeed * gearSpeedMult;
+            }
+            drawGear(g);
+    }
+    
+        
         ctx.save();
-        drawGear(g);
         ctx.restore();
     });
 
@@ -1097,13 +1100,17 @@ function gameLoop() {
         }
 
         // Target line
-        ctx.shadowBlur  = 25; ctx.shadowColor = config.colors.targetGlow;
+        if (state.visualQuality === 'high') { // ★分岐を追加
+            ctx.shadowBlur  = 25; ctx.shadowColor = config.colors.targetGlow;
+        }
         ctx.fillStyle   = config.colors.targetLine;
         ctx.fillRect(startX, targetY - 4, totalWidth, 8);
-        ctx.shadowBlur  = 10; ctx.shadowColor = '#fff';
+        if (state.visualQuality === 'high') { // ★分岐を追加
+            ctx.shadowBlur  = 10; ctx.shadowColor = '#fff';
+        }
         ctx.fillStyle   = 'rgba(255,255,255,0.3)';
         ctx.fillRect(startX, targetY - 1, totalWidth, 2);
-        ctx.shadowBlur  = 0;
+        ctx.shadowBlur  = 0; // 確実にリセット
 
         // Notes
         state.notes.forEach(note => {
@@ -1121,8 +1128,10 @@ function gameLoop() {
             }
 
             if (yPos > -50 && yPos < canvas.height + 50 && !note.missed) {
-                // Trail
-                for (let t = 1; t <= 5; t++) {
+                // Trail (軌跡)
+                // ★ 高画質なら5個、低画質なら0個にして処理を軽くする
+                const trailCount = (state.visualQuality === 'high') ? 5 : 0; 
+                for (let t = 1; t <= trailCount; t++) {
                     const r = laneWidth * (0.21 - t * 0.025);
                     if (r <= 0) continue;
                     ctx.globalAlpha = (6 - t) / 16;
@@ -1132,8 +1141,10 @@ function gameLoop() {
                 }
                 ctx.globalAlpha = 1; ctx.shadowBlur = 0;
 
-                // Note body
-                ctx.shadowBlur = 15; ctx.shadowColor = config.colors.noteCore;
+                // Note body (ノーツ本体)
+                if (state.visualQuality === 'high') { // ★分岐を追加
+                    ctx.shadowBlur = 15; ctx.shadowColor = config.colors.noteCore;
+                }
                 ctx.beginPath(); ctx.arc(xPos, yPos, laneWidth * 0.31, 0, Math.PI * 2);
                 ctx.fillStyle = config.colors.noteBorder; ctx.fill();
                 ctx.beginPath(); ctx.arc(xPos, yPos, laneWidth * 0.20, 0, Math.PI * 2);
@@ -1141,7 +1152,7 @@ function gameLoop() {
                 // Inner highlight
                 ctx.beginPath(); ctx.arc(xPos - laneWidth * 0.06, yPos - laneWidth * 0.06, laneWidth * 0.07, 0, Math.PI * 2);
                 ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
-                ctx.shadowBlur = 0;
+                ctx.shadowBlur = 0; // 確実にリセット
             }
         });
 
@@ -1155,10 +1166,16 @@ function gameLoop() {
             ctx.beginPath(); ctx.arc(s.x, s.y, r2, 0, Math.PI * 2);
             ctx.strokeStyle = s.color; ctx.lineWidth = 1.5;
             ctx.globalAlpha = s.life * 0.4;
-            ctx.shadowBlur  = 8; ctx.shadowColor = s.color; ctx.stroke();
+            if (state.visualQuality === 'high') { // ★分岐を追加
+                ctx.shadowBlur  = 8; ctx.shadowColor = s.color; 
+            }
+            ctx.stroke();
             ctx.beginPath(); ctx.arc(s.x, s.y, r,  0, Math.PI * 2);
             ctx.lineWidth   = 2.5; ctx.globalAlpha = s.life * 0.8;
-            ctx.shadowBlur  = 15; ctx.stroke();
+            if (state.visualQuality === 'high') { // ★分岐を追加
+                ctx.shadowBlur  = 15; 
+            }
+            ctx.stroke();
             ctx.globalAlpha = 1; ctx.shadowBlur = 0;
         }
     }
@@ -1170,7 +1187,9 @@ function gameLoop() {
         if (p.life <= 0) { state.particles.splice(i, 1); continue; }
         ctx.globalAlpha = p.life;
         ctx.fillStyle   = p.color;
-        ctx.shadowBlur  = 10; ctx.shadowColor = p.color;
+        if (state.visualQuality === 'high') { // ★分岐を追加
+            ctx.shadowBlur  = 10; ctx.shadowColor = p.color;
+        }
         ctx.beginPath(); ctx.arc(p.x, p.y, (p.size || 4) * p.life, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     }
