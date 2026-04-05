@@ -92,6 +92,7 @@ let state = {
     speedMultiplier: 1.0,
     bgmVolume:       0.8,
     seVolume:        0.8,
+    visualQuality:   'high', // ★ これを追加 ('high' または 'low')
     isPaused:        false,
     selectedTrack:   null,
     isPlaying:       false,
