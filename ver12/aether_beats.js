@@ -984,10 +984,10 @@ function gameLoop() {
         }
 
         // Target line
-        ctx.shadowBlur  = 25; ctx.shadowColor = config.colors.targetGlow;
+        ctx.shadowBlur  = 0; ctx.shadowColor = config.colors.targetGlow;
         ctx.fillStyle   = config.colors.targetLine;
         ctx.fillRect(startX, targetY - 4, totalWidth, 8);
-        ctx.shadowBlur  = 10; ctx.shadowColor = '#fff';
+        ctx.shadowBlur  = 0; ctx.shadowColor = '#fff';
         ctx.fillStyle   = 'rgba(255,255,255,0.3)';
         ctx.fillRect(startX, targetY - 1, totalWidth, 2);
         ctx.shadowBlur  = 0;
@@ -1013,14 +1013,14 @@ function gameLoop() {
                     const r = laneWidth * (0.21 - t * 0.025);
                     if (r <= 0) continue;
                     ctx.globalAlpha = (6 - t) / 16;
-                    ctx.shadowBlur  = 6; ctx.shadowColor = config.colors.noteCore;
+                    ctx.shadowBlur  = 0; ctx.shadowColor = config.colors.noteCore;
                     ctx.beginPath(); ctx.arc(xPos, yPos - t * 11, r, 0, Math.PI * 2);
                     ctx.fillStyle = config.colors.noteCore; ctx.fill();
                 }
                 ctx.globalAlpha = 1; ctx.shadowBlur = 0;
 
                 // Note body
-                ctx.shadowBlur = 15; ctx.shadowColor = config.colors.noteCore;
+                ctx.shadowBlur = 0; ctx.shadowColor = config.colors.noteCore;
                 ctx.beginPath(); ctx.arc(xPos, yPos, laneWidth * 0.31, 0, Math.PI * 2);
                 ctx.fillStyle = config.colors.noteBorder; ctx.fill();
                 ctx.beginPath(); ctx.arc(xPos, yPos, laneWidth * 0.20, 0, Math.PI * 2);
@@ -1042,10 +1042,10 @@ function gameLoop() {
             ctx.beginPath(); ctx.arc(s.x, s.y, r2, 0, Math.PI * 2);
             ctx.strokeStyle = s.color; ctx.lineWidth = 1.5;
             ctx.globalAlpha = s.life * 0.4;
-            ctx.shadowBlur  = 8; ctx.shadowColor = s.color; ctx.stroke();
+            ctx.shadowBlur  = 0; ctx.shadowColor = s.color; ctx.stroke();
             ctx.beginPath(); ctx.arc(s.x, s.y, r,  0, Math.PI * 2);
             ctx.lineWidth   = 2.5; ctx.globalAlpha = s.life * 0.8;
-            ctx.shadowBlur  = 15; ctx.stroke();
+            ctx.shadowBlur  = 0; ctx.stroke();
             ctx.globalAlpha = 1; ctx.shadowBlur = 0;
         }
     }
@@ -1057,7 +1057,7 @@ function gameLoop() {
         if (p.life <= 0) { state.particles.splice(i, 1); continue; }
         ctx.globalAlpha = p.life;
         ctx.fillStyle   = p.color;
-        ctx.shadowBlur  = 10; ctx.shadowColor = p.color;
+        ctx.shadowBlur  = 0; ctx.shadowColor = p.color;
         ctx.beginPath(); ctx.arc(p.x, p.y, (p.size || 4) * p.life, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     }
