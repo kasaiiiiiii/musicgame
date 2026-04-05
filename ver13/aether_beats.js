@@ -387,6 +387,14 @@ function setupSettings() {
         if (state.seGainNode) state.seGainNode.gain.value = state.seVolume;
     });
     seSlider.addEventListener('change', () => playTapSound());
+
+    const qualityToggle = document.getElementById('quality-toggle');
+    if (qualityToggle) {
+        qualityToggle.addEventListener('change', e => {
+            // チェックされていれば 'high'、外れていれば 'low'
+            state.visualQuality = e.target.checked ? 'high' : 'low';
+        });
+    }
 }
 
 async function openSettings() {
