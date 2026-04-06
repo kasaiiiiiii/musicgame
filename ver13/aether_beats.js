@@ -1058,7 +1058,7 @@ function gameLoop() {
         
         ctx.save();
         ctx.restore();
-    });
+    }
 
     // ── Gameplay ──
     if (state.isPlaying) {
