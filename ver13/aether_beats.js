@@ -1038,27 +1038,10 @@ function gameLoop() {
     }
 
     // ── Gears ──
-    // コンボ数に応じてギアのエフェクトを計算 (最大50コンボでMAX)
-    if (state.visualQuality === 'high') {
-    const comboRatio = Math.min(state.combo / 50, 1.0);
-        // スピードは最大3倍に加速
-        const gearSpeedMult = 1.0 + (comboRatio * 2.0);
-    
-        state.gears.forEach(g => {
-            // 元の基本スピードを初回だけ保存しておく
-            if (g.baseSpeed === undefined) g.baseSpeed = g.speed;
-    
-            // コンボ倍率をかけて回転させる
-            if (!state.isPaused) {
-                g.angle += g.baseSpeed * gearSpeedMult;
-            }
-            drawGear(g);
+    state.gears.forEach(g => {
+        if (!state.isPaused) g.angle += g.speed;
+        drawGear(g);
     });
-    
-        
-        ctx.save();
-        ctx.restore();
-    }
 
     // ── Gameplay ──
     if (state.isPlaying) {
