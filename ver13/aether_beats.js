@@ -1053,7 +1053,7 @@ function gameLoop() {
                 g.angle += g.baseSpeed * gearSpeedMult;
             }
             drawGear(g);
-    }
+    });
     
         
         ctx.save();
