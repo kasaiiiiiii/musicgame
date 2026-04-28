@@ -390,8 +390,12 @@ input[type=range]::-webkit-slider-runnable-track {
 }
 
 /* ============================================================
-   CUSTOM SCROLLBAR (CREDITS)
+   HOLD NOTE — pulse animation on the target lane
 ============================================================ */
+@keyframes holdPulse {
+    0%, 100% { opacity: 0.6; }
+    50%       { opacity: 1.0; }
+}
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
 }
