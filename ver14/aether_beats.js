@@ -577,6 +577,22 @@ function setDifficulty(diff) {
     if (state.selectedTrack) updateLeaderboardDisplay();
 }
 
+// 曲を選択・開始する処理（例: selectTrack 関数など）の中に以下の画像読み込み処理を追加します
+    function loadTrackBackground(track) {
+        if (track && track.bgImage) {
+            const img = new Image();
+            img.src = track.bgImage;
+            img.onload = () => {
+                state.currentBgImageObj = img;
+            };
+            img.onerror = () => {
+                state.currentBgImageObj = null; // 読み込み失敗時はデフォルト背景
+            };
+        } else {
+            state.currentBgImageObj = null; // 背景設定がない場合はデフォルト
+        }
+    }
+
 async function selectTrack(track, btnEl) {
     document.querySelectorAll('#track-list button').forEach(b => b.classList.remove('active'));
     if (btnEl) btnEl.classList.add('active');
@@ -1281,22 +1297,6 @@ function gameLoop() {
         }
         ctx.beginPath(); ctx.arc(p.x, p.y, (p.size || 4) * p.life, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    }
-
-    // 曲を選択・開始する処理（例: selectTrack 関数など）の中に以下の画像読み込み処理を追加します
-    function loadTrackBackground(track) {
-        if (track && track.bgImage) {
-            const img = new Image();
-            img.src = track.bgImage;
-            img.onload = () => {
-                state.currentBgImageObj = img;
-            };
-            img.onerror = () => {
-                state.currentBgImageObj = null; // 読み込み失敗時はデフォルト背景
-            };
-        } else {
-            state.currentBgImageObj = null; // 背景設定がない場合はデフォルト
-        }
     }
 
 }
