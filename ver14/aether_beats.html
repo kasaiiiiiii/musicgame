@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AETHER BEATS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="aether_beats.css">
+</head>
+<body>
+
+    <!-- Global CRT scan effects -->
+    <div class="scanlines"></div>
+    <div class="scan-sweep"></div>
+
+    <!-- Overlay layers -->
+    <div id="transition-overlay"></div>
+    <div id="miss-flash"></div>
+    <div id="combo-milestone"></div>
+    <div id="engage-overlay"></div>
+
+    <!-- ============================================================
+         TITLE SCREEN
+    ============================================================ -->
+    <div id="title-screen">
+        <div class="title-logo-wrap">
+            <div class="title-logo-glitch g2">AETHER BEATS</div>
+            <div class="title-logo-glitch g1">AETHER BEATS</div>
+            <div class="title-logo">AETHER BEATS</div>
+            <!-- <div class="title-subtitle">◆ SYSTEM UPDATE v13 ◆</div> -->
+        </div>
+        <div class="title-decoration">
+            <div class="title-line"></div>
+            <div class="title-diamond"></div>
+            <div class="title-line right"></div>
+        </div>
+        <div class="press-start-text">▸ PRESS ANY KEY TO START ◂</div>
+
+        <div class="title-chord">
+            <span style="animation-delay:0s"></span>
+            <span style="animation-delay:0.15s"></span>
+            <span style="animation-delay:0.3s"></span>
+            <span style="animation-delay:0.45s"></span>
+            <span style="animation-delay:0.6s"></span>
+            <span style="animation-delay:0.45s"></span>
+            <span style="animation-delay:0.3s"></span>
+            <span style="animation-delay:0.15s"></span>
+            <span style="animation-delay:0s"></span>
+        </div>
+        <div class="title-version">AETHER BEATS SYSTEM — © v1.0.0</div>
+    </div>
+
+    <!-- ============================================================
+         BOOT SCREEN
+    ============================================================ -->
+    <div id="boot-screen">
+        <div id="boot-lines"></div>
+    </div>
+
+    <!-- ============================================================
+         SETTINGS BUTTON (top-right, always visible during play)
+    ============================================================ -->
+    <div class="absolute top-4 right-4 md:top-6 md:right-6 z-[45] pointer-events-auto flex flex-col gap-3">
+        
+        <button
+            onclick="openSettings()"
+            class="text-[var(--copper)] hover:text-[var(--neon-cyan)] transition-all p-2 rounded-full bg-black/50 backdrop-blur-sm border border-[var(--copper)] hover:shadow-[0_0_15px_var(--neon-cyan)]"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+        </button>
+
+        <button
+            onclick="openCredits()"
+            class="text-[var(--copper)] hover:text-[var(--neon-cyan)] transition-all p-2 rounded-full bg-black/50 backdrop-blur-sm border border-[var(--copper)] hover:shadow-[0_0_15px_var(--neon-cyan)] flex items-center justify-center"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </button>
+
+    </div>
+
+    <!-- ============================================================
+         UI LAYER  (HUD + all screens)
+    ============================================================ -->
+    <div id="ui-layer" class="p-4 md:p-6 flex flex-col justify-between">
+
+        <!-- HUD -->
+        <div class="flex justify-between items-start">
+            <div>
+                <div class="text-xs md:text-sm text-gray-400 font-mono">SYSTEM SCORE</div>
+                <div id="score-display" class="text-3xl md:text-5xl font-bold score-glow">0000000</div>
+            </div>
+            <div class="flex items-start mr-14 md:mr-20">
+                <div class="text-right">
+                    <div class="text-xs md:text-sm text-gray-400 font-mono">CHAIN COMBO</div>
+                    <div id="combo-display" class="text-3xl md:text-5xl font-bold hud-text transition-transform duration-100">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── MAIN MENU ── -->
+        <div id="menu-container" class="absolute inset-0 flex items-center justify-center pointer-events-auto bg-black/80 backdrop-blur-sm z-40 p-4 hidden">
+            <div class="bg-[var(--bg-panel)] p-4 md:p-8 border border-[var(--copper)] rounded-xl shadow-[0_0_40px_rgba(184,115,51,0.2)] w-full max-w-4xl flex flex-col max-h-[95vh]">
+
+                <div class="text-center mb-4 md:mb-6">
+                    <h1 class="text-3xl md:text-6xl font-black mb-1"
+                        style="color:var(--copper);text-shadow:0 0 15px var(--neon-orange);">AETHER BEATS</h1>
+                    <!-- <p class="text-[10px] md:text-sm text-cyan-500 tracking-[0.4em] font-mono">SYSTEM UPDATE v13</p> -->
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-4 md:gap-6 flex-grow overflow-hidden">
+
+                    <!-- Left: Track List -->
+                    <div class="w-full md:w-1/2 flex flex-col overflow-hidden bg-black/50 rounded-lg p-3 md:p-4 border border-gray-800">
+                        <h2 class="text-sm text-orange-400 font-mono mb-3 border-b border-gray-700 pb-2 flex justify-between">
+                            <span>1. SELECT TRACK</span>
+                            <span id="track-count" class="text-cyan-500">0 TRACKS</span>
+                        </h2>
+                        <div id="track-list" class="overflow-y-auto pr-2 space-y-2 flex-grow pb-2"></div>
+                        <div class="mt-3 border-t border-gray-700 pt-3">
+                            <label class="btn-steampunk w-full p-3 flex items-center justify-center gap-3 rounded cursor-pointer group">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-cyan-300"
+                                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+                                </svg>
+                                <span class="text-orange-400 font-bold group-hover:text-cyan-300 text-sm tracking-wider">+ LOAD LOCAL AUDIO</span>
+                                <input type="file" id="local-file-input" accept="audio/*" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Right: Details + Leaderboard -->
+                    <div class="w-full md:w-1/2 flex flex-col overflow-y-auto pr-2">
+
+                        <!-- Jacket & title -->
+                        <div class="bg-black/50 p-3 rounded-lg border border-gray-800 mb-4 flex flex-col justify-center items-center relative min-h-[140px] md:min-h-[160px]">
+                            <div id="jacket-container"
+                                 class="w-20 h-20 md:w-24 md:h-24 mb-2 rounded border-2 border-gray-700 bg-gray-900 flex flex-col justify-center items-center overflow-hidden shadow-[0_0_15px_rgba(0,0,0,0.5)] relative">
+                                <span id="no-image-text" class="text-gray-600 font-mono text-[10px] tracking-widest absolute">NO IMAGE</span>
+                                <img id="jacket-image" src="" alt="Jacket"
+                                     class="w-full h-full object-cover hidden z-10 transition-opacity duration-300">
+                            </div>
+                            <h3 id="selected-title" class="text-base md:text-lg font-bold text-center text-white truncate w-full px-2">TRACK NOT SELECTED</h3>
+                            <p  id="selected-status" class="text-xs text-gray-500 font-mono mt-1">Awaiting Selection...</p>
+                        </div>
+
+                        <!-- Difficulty -->
+                        <div class="mb-4">
+                            <h2 class="text-xs text-gray-400 font-mono mb-2">2. DIFFICULTY</h2>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                <button onclick="setDifficulty('easy')"   id="diff-easy"   class="btn-steampunk py-2 text-xs md:text-sm rounded">EASY</button>
+                                <button onclick="setDifficulty('normal')" id="diff-normal" class="btn-steampunk py-2 text-xs md:text-sm rounded active">NORMAL</button>
+                                <button onclick="setDifficulty('hard')"   id="diff-hard"   class="btn-steampunk py-2 text-xs md:text-sm rounded">HARD</button>
+                                <button onclick="setDifficulty('expert')" id="diff-expert" class="btn-steampunk py-2 text-xs md:text-sm rounded">EXPERT</button>
+                            </div>
+                        </div>
+
+                        <!-- Leaderboard -->
+                        <div class="mb-4 bg-black/60 border border-gray-800 rounded p-3 flex-grow">
+                            <h2 class="text-xs text-gray-400 font-mono mb-2 flex justify-between items-end border-b border-gray-800 pb-1">
+                                <span>3. LEADERBOARD</span>
+                                <span id="leaderboard-diff" class="text-sm font-bold tracking-wider">---</span>
+                            </h2>
+                            <div id="leaderboard-list" class="space-y-1.5 font-mono text-sm mt-2">
+                                <div class="text-center text-gray-600 text-xs py-2">SELECT A TRACK</div>
+                            </div>
+                        </div>
+
+                        <button id="start-btn"
+                                class="btn-steampunk w-full py-3 md:py-4 text-lg md:text-xl font-bold tracking-widest rounded-lg mt-auto"
+                                disabled>
+                            4. SYSTEM STANDBY
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── SETTINGS MODAL ── -->
+        <div id="settings-modal"
+             class="absolute inset-0 flex items-center justify-center hidden pointer-events-auto bg-black/80 backdrop-blur-md z-50 p-4">
+            <div class="bg-[var(--bg-panel)] p-6 md:p-8 border-2 border-[var(--copper)] rounded-xl shadow-[0_0_40px_rgba(0,243,255,0.15)] w-full max-w-md relative">
+                <div id="settings-main-view">
+                    <h2 class="text-3xl font-bold text-cyan-400 mb-8 font-mono text-center"
+                        style="text-shadow:0 0 10px var(--neon-cyan);">SYSTEM SETTINGS</h2>
+                    <div class="space-y-8">
+                        <div class="bg-black/40 p-4 rounded border border-gray-800">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-sm text-gray-300 font-mono">NOTE SPEED</span>
+                                <span id="speed-display" class="text-cyan-400 font-bold font-mono text-lg">x1.0</span>
+                            </div>
+                            <input type="range" id="speed-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+                        </div>
+                        <div class="bg-black/40 p-4 rounded border border-gray-800">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-sm text-gray-300 font-mono">BGM VOLUME</span>
+                                <span id="bgm-vol-display" class="text-cyan-400 font-bold font-mono text-lg">80%</span>
+                            </div>
+                            <input type="range" id="bgm-vol-slider" min="0" max="1" step="0.05" value="0.8">
+                        </div>
+                        <div class="bg-black/40 p-4 rounded border border-gray-800">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-sm text-gray-300 font-mono">SE VOLUME</span>
+                                <span id="se-vol-display" class="text-cyan-400 font-bold font-mono text-lg">80%</span>
+                            </div>
+                            <input type="range" id="se-vol-slider" min="0" max="1" step="0.05" value="0.8">
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <button id="quality-settings-toggle"
+                                class="btn-steampunk w-full py-3 rounded text-sm tracking-widest">
+                            OPEN QUALITY SETTINGS
+                        </button>
+                    </div>
+                    
+                    <button onclick="closeSettings()"
+                            class="btn-steampunk w-full py-4 mt-8 text-xl font-bold tracking-widest rounded-lg">
+                        APPLY & CLOSE
+                    </button>
+                </div>
+
+                <div id="quality-settings-window" class="hidden">
+                    <h2 class="text-2xl font-bold text-cyan-400 mb-6 font-mono text-center"
+                        style="text-shadow:0 0 10px var(--neon-cyan);">QUALITY SETTINGS</h2>
+
+                    <div class="space-y-4">
+                        <div class="bg-black/40 p-4 rounded border border-gray-800">
+                            <p class="text-sm text-white font-mono mb-3">QUALITY ONLY</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button id="quality-only-high" class="btn-steampunk py-2 text-xs rounded">HIGH</button>
+                                <button id="quality-only-low" class="btn-steampunk py-2 text-xs rounded">LOW</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-black/40 p-4 rounded border border-gray-800">
+                            <p class="text-sm text-white font-mono mb-3">FPS LIMIT</p>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button id="fps-60" class="btn-steampunk py-2 text-xs rounded">60</button>
+                                <button id="fps-45" class="btn-steampunk py-2 text-xs rounded">45</button>
+                                <button id="fps-30" class="btn-steampunk py-2 text-xs rounded">30</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mt-6">
+                        <button id="quality-back-btn" class="btn-steampunk py-3 text-sm tracking-widest rounded">BACK</button>
+                        <button id="quality-close-btn" class="btn-steampunk py-3 text-sm tracking-widest rounded">Apply & CLOSE</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Credit MODAL -->
+        <div id="credits-screen" class="hidden fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-4 pointer-events-auto">
+        <div class="bg-[var(--bg-panel)] border border-[var(--copper)] rounded-xl p-6 md:p-8 shadow-[0_0_30px_rgba(184,115,51,0.2)] w-full max-w-2xl text-center flex flex-col max-h-[90vh]">
+            
+            <h2 class="text-2xl md:text-4xl font-black mb-6" style="color:var(--copper);text-shadow:0 0 10px var(--neon-orange);">CREDITS</h2>
+            
+            <div class="space-y-6 text-sm md:text-base text-gray-300 overflow-y-auto custom-scrollbar text-left flex-grow pr-4">
+                
+                <div>
+                    <h3 class="text-cyan-400 font-bold text-lg border-b border-cyan-900 pb-1 mb-2">Game Design & Programming</h3>
+                    <p>かさ</p>
+                </div>
+
+                <div>
+                    <h3 class="text-cyan-400 font-bold text-lg border-b border-cyan-900 pb-1 mb-2">Powered AI</h3>
+                    <p>Gemini</p>
+                </div>
+
+                <div>
+                    <h3 class="text-cyan-400 font-bold text-lg border-b border-cyan-900 pb-1 mb-2">Music</h3>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>乾杯をしよう / 駆動ガール / 精霊流し / トーキョータワー</li>
+                        <p class="text-sm text-gray-400 ml-4">BGMer様</p>
+                        <p class="text-sm text-gray-400 ml-4">URL：https://bgmer.net/</p>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-cyan-400 font-bold text-lg border-b border-cyan-900 pb-1 mb-2">UI Framework</h3>
+                    <p>Tailwind CSS</p>
+                </div>
+
+                <div>
+                    <h3 class="text-cyan-400 font-bold text-lg border-b border-cyan-900 pb-1 mb-2">Sound Effects (SE)</h3>
+                    <p>Web Audio API</p>
+                </div>
+
+                <div>
+                    <h3 class="text-cyan-400 font-bold text-lg border-b border-cyan-900 pb-1 mb-2">Icons</h3>
+                    <p>Heroicons</p>
+                </div>
+
+                <div>
+                    <h3 class="text-cyan-400 font-bold text-lg border-b border-cyan-900 pb-1 mb-2">Fonts</h3>
+                    <p>Orbitron, Share Tech Mono (Google Fonts)</p>
+                </div>
+                
+            </div>
+
+            <div class="mt-8">
+                <button onclick="closeCredits()" class="btn-steampunk px-10 py-3 rounded text-lg font-bold tracking-widest border border-[var(--copper)]">
+                    CLOSE
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+        <!-- ── RESULT SCREEN ── -->
+        <div id="result-screen"
+             class="absolute inset-0 flex flex-col items-center justify-center hidden pointer-events-auto bg-black/95 backdrop-blur-lg z-40 overflow-auto py-6">
+
+            <p id="result-track-name"
+               class="text-xl md:text-3xl font-bold text-cyan-300 mb-1 truncate max-w-2xl px-4 text-center">Track Name</p>
+            <p id="result-diff-badge"
+               class="text-xs font-mono mb-5 tracking-widest text-gray-400">── NORMAL ──</p>
+
+            <p id="result-highscore-msg"
+               class="text-yellow-400 font-bold text-xl md:text-2xl mb-4 hidden animate-pulse font-mono tracking-widest"
+               style="text-shadow:0 0 10px yellow;">★ NEW RECORD !! ★</p>
+
+            <!-- Rank + stats -->
+            <div class="flex items-center gap-8 md:gap-14 mb-6">
+                <div id="result-rank">S</div>
+                <div class="flex flex-col gap-3">
+                    <div>
+                        <p class="text-[10px] text-gray-500 font-mono">FINAL SCORE</p>
+                        <p id="result-score" class="text-cyan-400 font-bold text-3xl md:text-5xl font-mono">0000000</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-gray-500 font-mono">MAX COMBO</p>
+                        <p id="result-combo" class="text-orange-400 font-bold text-2xl md:text-4xl font-mono">0</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-gray-500 font-mono">ACCURACY</p>
+                        <p id="result-accuracy" class="text-green-400 font-bold text-xl font-mono">0.0%</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Judge breakdown -->
+            <div class="grid grid-cols-4 gap-4 md:gap-8 text-center mb-6 border border-gray-800 rounded-lg p-4 bg-black/40">
+                <div>
+                    <p class="text-purple-400 text-[10px] font-mono mb-1">PERFECT</p>
+                    <p id="result-perfect" class="text-white font-bold text-xl md:text-2xl font-mono">0</p>
+                </div>
+                <div>
+                    <p class="text-cyan-400 text-[10px] font-mono mb-1">GREAT</p>
+                    <p id="result-great" class="text-white font-bold text-xl md:text-2xl font-mono">0</p>
+                </div>
+                <div>
+                    <p class="text-green-400 text-[10px] font-mono mb-1">GOOD</p>
+                    <p id="result-good" class="text-white font-bold text-xl md:text-2xl font-mono">0</p>
+                </div>
+                <div>
+                    <p class="text-red-400 text-[10px] font-mono mb-1">MISS</p>
+                    <p id="result-miss" class="text-white font-bold text-xl md:text-2xl font-mono">0</p>
+                </div>
+            </div>
+
+            <button onclick="returnToMenu()"
+                    class="btn-steampunk px-10 py-3 md:py-4 rounded-lg text-lg md:text-xl font-bold tracking-widest">
+                RETURN TO MENU
+            </button>
+        </div>
+
+    </div><!-- /#ui-layer -->
+
+    <!-- Canvas (z-index: 1, behind UI) -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Judgement text container -->
+    <div id="judge-container"></div>
+
+    <script src="aether_beats.js"></script>
+</body>
+</html>
