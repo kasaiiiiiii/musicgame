@@ -107,7 +107,6 @@ let state = {
     source:          null,
     buffer:          null,
     startTime:       0,
-    gears:           [],
     particles:       [],
     keyState:        [false, false, false, false],
     objectUrlToRevoke: null,
@@ -116,6 +115,7 @@ let state = {
     shockwaves:  [],   // { x, y, life, color }
     titlePhase:  'title', // 'title' | 'booting' | 'menu'
     currentBgImageObj: null, // ← これを追加
+    holdNotes:   [null, null, null, null], // ロングノーツ: レーンごとのアクティブホールドノート
 };
 
 // ==========================================
@@ -134,12 +134,22 @@ let lastFrameTime = 0;
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ==========================================
+// LANE LAYOUT HELPER
+// ==========================================
+function getLaneLayout() {
+    const laneWidth  = Math.min(canvas.width * 0.22, 120);
+    const totalWidth = laneWidth * config.lanes;
+    const startX     = (canvas.width - totalWidth) / 2;
+    const targetY    = canvas.height * 0.85;
+    return { laneWidth, totalWidth, startX, targetY };
+}
+
+// ==========================================
 // INIT
 // ==========================================
 window.onload = () => {
     resize();
     window.addEventListener('resize', resize);
-    initGears();
     initTitleStars();
     setDifficulty('normal');
     renderTrackList();
@@ -302,8 +312,8 @@ async function beginTitleTransition() {
 let previewAudio = null;
 let previewTimeout = null;
 const QUALITY_PRESETS = {
-    high: { particleScale: 1.0, confettiCount: 150, gearCount: 15 },
-    low:  { particleScale: 0.55, confettiCount: 70, gearCount: 8  },
+    high: { particleScale: 1.0, confettiCount: 150 },
+    low:  { particleScale: 0.55, confettiCount: 70 },
 };
 
 function getQualityPreset() {
@@ -457,7 +467,6 @@ function setFpsLimit(fps) {
 function setVisualQualityOnly(quality) {
     state.visualQuality = quality;
     initTitleStars();
-    initGears();
     updateQualitySettingsUI();
 }
 
@@ -659,6 +668,34 @@ document.getElementById('local-file-input').addEventListener('change', e => {
 // ==========================================
 // NOTE GENERATION
 // ==========================================
+
+// ロングノーツ生成ヘルパー
+function makeTapNote(time, lane) {
+    return { time, lane, hit: false, missed: false, type: 'tap' };
+}
+function makeSingleNote(time, lane) {
+    // 常に seededRandom() を2回消費することで、ホールドになるかどうかに関係なく
+    // 後続のレーン配置が変わらず、譜面が毎回同一になる
+    const holdChances  = { easy: 0.06, normal: 0.08, hard: 0.11, expert: 0.14 };
+    const holdDurRange = {
+        easy:   [0.55, 1.20],
+        normal: [0.40, 0.95],
+        hard:   [0.30, 0.75],
+        expert: [0.25, 0.60],
+    };
+    const holdRoll = seededRandom(); // 常に1回目消費
+    const durRoll  = seededRandom(); // 常に2回目消費（ホールドでない場合は捨てる）
+    const note = makeTapNote(time, lane);
+    if (holdRoll < holdChances[state.currentDiff]) {
+        const [minD, maxD] = holdDurRange[state.currentDiff];
+        note.type      = 'hold';
+        note.duration  = minD + durRoll * (maxD - minD);
+        note.holdEnd   = time + note.duration;
+        note.holdActive = false;
+    }
+    return note;
+}
+
 function generateNotes() {
     seededRandom = mulberry32(cyrb128(state.selectedTrack.id + '_' + state.currentDiff));
     const channelData = state.buffer.getChannelData(0);
@@ -675,50 +712,84 @@ function generateNotes() {
         energies.push(e); sumEnergy += e;
     }
 
-    const avgEnergy      = sumEnergy / energies.length;
-    const threshold      = avgEnergy * diffCfg.threshold;
+    const avgEnergy       = sumEnergy / energies.length;
+    const threshold       = avgEnergy * diffCfg.threshold;
     const strongThreshold = threshold * 1.5;
     let lastTime  = 0, lastLane = Math.floor(seededRandom() * config.lanes);
     let stairDir  = 1, isStair  = false, stairCount = 0;
 
+    // レーンごとのホールドノーツ終了時刻を追跡（重なり完全防止）
+    // ホールドが終わってから RELEASE_BUFFER 秒はそのレーンにノーツを置かない
+    const laneHoldEndTime = new Array(config.lanes).fill(-Infinity);
+    const RELEASE_BUFFER  = 0.20; // 200ms: 離してから次を押す余裕
+
     for (let i = 1; i < energies.length - 1; i++) {
         const time = (i * windowSize) / sampleRate;
         const e    = energies[i];
-        if (e > threshold && e > energies[i - 1] && e > energies[i + 1]) {
-            if (time - lastTime > diffCfg.minInterval) {
-                if (e > strongThreshold && state.currentDiff !== 'easy' && seededRandom() > 0.15) {
-                    const l1 = Math.floor(seededRandom() * config.lanes);
-                    const l2 = (l1 + 1 + Math.floor(seededRandom() * (config.lanes - 1))) % config.lanes;
-                    state.notes.push({ time, lane: l1, hit: false, missed: false });
-                    state.notes.push({ time, lane: l2, hit: false, missed: false });
-                    lastLane = l2; isStair = false;
-                } else {
-                    let nextLane = lastLane;
-                    if (time - lastTime < diffCfg.minInterval * 1.8) {
-                        if (!isStair) {
-                            isStair    = true;
-                            stairDir   = lastLane === 0 ? 1 : (lastLane === config.lanes - 1 ? -1 : (seededRandom() > 0.5 ? 1 : -1));
-                            stairCount = 0;
-                        }
-                        nextLane = lastLane + stairDir;
-                        if (nextLane < 0 || nextLane >= config.lanes) {
-                            stairDir *= -1; nextLane = lastLane + stairDir * 2;
-                            if (nextLane < 0) nextLane = 1;
-                            if (nextLane >= config.lanes) nextLane = config.lanes - 2;
-                        }
-                        stairCount++;
-                        if (stairCount > 5) isStair = false;
-                    } else {
-                        isStair  = false;
-                        nextLane = Math.floor(seededRandom() * config.lanes);
-                        if (nextLane === lastLane && seededRandom() > 0.4) nextLane = (nextLane + 1) % config.lanes;
-                    }
-                    state.notes.push({ time, lane: nextLane, hit: false, missed: false });
-                    lastLane = nextLane;
-                }
-                lastTime = time;
-            }
+        if (!(e > threshold && e > energies[i - 1] && e > energies[i + 1])) continue;
+        if (time - lastTime <= diffCfg.minInterval) continue;
+
+        // 現時点でホールドが終わっていない（または終了後バッファ内）レーンを除外
+        const freeLanes = [];
+        for (let l = 0; l < config.lanes; l++) {
+            if (time >= laneHoldEndTime[l] + RELEASE_BUFFER) freeLanes.push(l);
         }
+        if (freeLanes.length === 0) { lastTime = time; continue; } // 全レーン塞がり → スキップ
+
+        if (e > strongThreshold && state.currentDiff !== 'easy' && seededRandom() > 0.15) {
+            // ── コードノーツ (2同時) ── 常にタップのみ
+            if (freeLanes.length >= 2) {
+                const idx1 = Math.floor(seededRandom() * freeLanes.length);
+                const l1   = freeLanes[idx1];
+                const rest = freeLanes.filter(l => l !== l1);
+                const l2   = rest[Math.floor(seededRandom() * rest.length)];
+                state.notes.push(makeTapNote(time, l1));
+                state.notes.push(makeTapNote(time, l2));
+                lastLane = l2; isStair = false;
+            } else {
+                // 空きが1レーンのみの場合はシングルに降格
+                const note = makeSingleNote(time, freeLanes[0]);
+                state.notes.push(note);
+                if (note.type === 'hold') laneHoldEndTime[freeLanes[0]] = note.holdEnd;
+                lastLane = freeLanes[0]; isStair = false;
+            }
+        } else {
+            // ── シングルノーツ ──
+            let nextLane = lastLane;
+            if (time - lastTime < diffCfg.minInterval * 1.8) {
+                if (!isStair) {
+                    isStair    = true;
+                    stairDir   = lastLane === 0 ? 1 : (lastLane === config.lanes - 1 ? -1 : (seededRandom() > 0.5 ? 1 : -1));
+                    stairCount = 0;
+                }
+                nextLane = lastLane + stairDir;
+                if (nextLane < 0 || nextLane >= config.lanes) {
+                    stairDir *= -1; nextLane = lastLane + stairDir * 2;
+                    if (nextLane < 0) nextLane = 1;
+                    if (nextLane >= config.lanes) nextLane = config.lanes - 2;
+                }
+                stairCount++;
+                if (stairCount > 5) isStair = false;
+            } else {
+                isStair  = false;
+                nextLane = Math.floor(seededRandom() * config.lanes);
+                if (nextLane === lastLane && seededRandom() > 0.4) nextLane = (nextLane + 1) % config.lanes;
+            }
+
+            // 候補レーンがホールド中なら、最も近い空きレーンに変更
+            if (!freeLanes.includes(nextLane)) {
+                const sorted = [...freeLanes]
+                    .filter(l => l !== lastLane)
+                    .sort((a, b) => Math.abs(a - nextLane) - Math.abs(b - nextLane));
+                nextLane = sorted.length > 0 ? sorted[0] : freeLanes[0];
+            }
+
+            const note = makeSingleNote(time, nextLane);
+            state.notes.push(note);
+            if (note.type === 'hold') laneHoldEndTime[nextLane] = note.holdEnd;
+            lastLane = nextLane;
+        }
+        lastTime = time;
     }
 }
 
@@ -739,6 +810,7 @@ document.getElementById('start-btn').addEventListener('click', async () => {
     state.maxCombo    = 0;
     state.particles   = [];
     state.shockwaves  = [];
+    state.holdNotes   = [null, null, null, null];
     state.judgeCounts = { perfect: 0, great: 0, good: 0, miss: 0 };
     updateHUD();
 
@@ -936,10 +1008,8 @@ function returnToMenu() {
 function handleInput(laneIndex) {
     if (!state.isPlaying || state.isPaused) return;
     const currentTime = state.audioCtx.currentTime - state.startTime;
-    const laneWidth   = Math.min(canvas.width * 0.22, 120);
-    const startX      = (canvas.width - laneWidth * config.lanes) / 2;
-    const hitX        = startX + laneIndex * laneWidth + laneWidth / 2;
-    const targetY     = canvas.height * 0.85;
+    const { laneWidth, startX, targetY } = getLaneLayout();
+    const hitX = startX + laneIndex * laneWidth + laneWidth / 2;
 
     spawnParticles(hitX, targetY, config.colors.noteCore, 6);
 
@@ -947,31 +1017,93 @@ function handleInput(laneIndex) {
     let targetNote = null, minDiff = Infinity;
 
     for (const note of state.notes) {
-        if (note.lane === laneIndex && !note.hit && !note.missed) {
+        // holdActive中のノートは再アクティブ化しない
+        if (note.lane === laneIndex && !note.hit && !note.missed && !note.holdActive) {
             const diff = Math.abs(note.time - currentTime);
             if (diff < winGood && diff < minDiff) { minDiff = diff; targetNote = note; }
         }
     }
 
     if (targetNote) {
-        targetNote.hit = true;
-        let text = '', points = 0, color = '';
+        const isHold = targetNote.type === 'hold';
+        let color = '';
+        if (minDiff < winPerfect)    { color = '#ff00ff'; playPerfectSound(); }
+        else if (minDiff < winGreat) { color = '#00f3ff'; }
+        else                         { color = '#00ff88'; }
 
-        if (minDiff < winPerfect)     { text = 'PERFECT'; points = 1000; color = '#ff00ff'; state.judgeCounts.perfect++; playPerfectSound(); }
-        else if (minDiff < winGreat)  { text = 'GREAT';   points = 500;  color = '#00f3ff'; state.judgeCounts.great++;   }
-        else                          { text = 'GOOD';    points = 100;  color = '#00ff88'; state.judgeCounts.good++;    }
+        if (isHold) {
+            // ── ロングノーツ: 押し始め ──
+            targetNote.holdActive = true;
+            state.holdNotes[laneIndex] = targetNote;
+            // コンボ加算（押し始め時）
+            state.combo++;
+            if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+            state.shockwaves.push({ x: hitX, y: targetY, life: 1.0, color });
+            spawnParticles(hitX, targetY, color, 20);
+            showJudgement('HOLD!', color);
+            checkComboMilestone(state.combo);
+            updateHUD();
+        } else {
+            // ── タップノーツ: 既存処理 ──
+            targetNote.hit = true;
+            let text = '', points = 0;
+            if (minDiff < winPerfect)    { text = 'PERFECT'; points = 1000; color = '#ff00ff'; state.judgeCounts.perfect++; }
+            else if (minDiff < winGreat) { text = 'GREAT';   points = 500;  color = '#00f3ff'; state.judgeCounts.great++;   }
+            else                         { text = 'GOOD';    points = 100;  color = '#00ff88'; state.judgeCounts.good++;    }
 
-        state.combo++;
-        if (state.combo > state.maxCombo) state.maxCombo = state.combo;
-        state.score += points + (state.combo * 10);
+            state.combo++;
+            if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+            state.score += points + (state.combo * 10);
 
-        state.shockwaves.push({ x: hitX, y: targetY, life: 1.0, color });
-        spawnParticles(hitX, targetY, color, text === 'PERFECT' ? 30 : 18);
+            state.shockwaves.push({ x: hitX, y: targetY, life: 1.0, color });
+            spawnParticles(hitX, targetY, color, text === 'PERFECT' ? 30 : 18);
 
-        showJudgement(text, color);
-        checkComboMilestone(state.combo);
-        updateHUD();
+            showJudgement(text, color);
+            checkComboMilestone(state.combo);
+            updateHUD();
+        }
     }
+}
+
+// ロングノーツ: 離し判定
+function releaseHoldNote(laneIndex) {
+    const note = state.holdNotes[laneIndex];
+    if (!note || note.hit || !note.holdActive) { state.holdNotes[laneIndex] = null; return; }
+    if (!state.isPlaying || state.isPaused) return;
+
+    const { laneWidth, startX, targetY } = getLaneLayout();
+    const xPos = startX + laneIndex * laneWidth + laneWidth / 2;
+    const currentTime = state.audioCtx.currentTime - state.startTime;
+    const heldDuration = currentTime - note.time;
+    const ratio = Math.min(heldDuration / note.duration, 1.0);
+
+    note.holdActive = false;
+    note.hit = true;
+    state.holdNotes[laneIndex] = null;
+
+    if (ratio >= 0.85) {
+        state.judgeCounts.perfect++;
+        state.score += 1000 + state.combo * 10;
+        playPerfectSound();
+        showJudgement('PERFECT', '#ff00ff');
+        state.shockwaves.push({ x: xPos, y: targetY, life: 1.0, color: '#ff00ff' });
+        spawnParticles(xPos, targetY, '#ff00ff', 25);
+    } else if (ratio >= 0.5) {
+        state.judgeCounts.great++;
+        state.score += 500 + state.combo * 5;
+        showJudgement('GREAT', '#00f3ff');
+        spawnParticles(xPos, targetY, '#00f3ff', 14);
+    } else if (ratio >= 0.25) {
+        state.judgeCounts.good++;
+        state.score += 200;
+        showJudgement('GOOD', '#00ff88');
+    } else {
+        state.combo = 0;
+        state.judgeCounts.miss++;
+        showJudgement('MISS', '#ff0044');
+        showMissFlash();
+    }
+    updateHUD();
 }
 
 window.addEventListener('keydown', e => {
@@ -983,23 +1115,56 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => {
     const li = config.keys.indexOf(e.key.toLowerCase());
-    if (li !== -1) state.keyState[li] = false;
+    if (li !== -1) {
+        state.keyState[li] = false;
+        if (state.isPlaying && !state.isPaused) releaseHoldNote(li);
+    }
 });
+// タッチ操作: ロングノーツに対応するためタッチIDを追跡
+const activeTouches = new Map(); // touchIdentifier -> laneIndex
+
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     if (state.isPaused) return;
-    const rect       = canvas.getBoundingClientRect();
-    const laneWidth  = Math.min(canvas.width * 0.22, 120);
-    const totalWidth = laneWidth * config.lanes;
-    const startX     = (canvas.width - totalWidth) / 2;
+    const rect      = canvas.getBoundingClientRect();
+    const { laneWidth, startX, totalWidth } = getLaneLayout();
     for (let i = 0; i < e.changedTouches.length; i++) {
-        const x = e.changedTouches[i].clientX - rect.left;
+        const touch = e.changedTouches[i];
+        const x = touch.clientX - rect.left;
         if (x >= startX && x <= startX + totalWidth) {
             const li = Math.floor((x - startX) / laneWidth);
-            state.keyState[li] = true;
-            playTapSound();
-            if (state.isPlaying) handleInput(li);
-            setTimeout(() => { state.keyState[li] = false; }, 50);
+            if (li >= 0 && li < config.lanes) {
+                activeTouches.set(touch.identifier, li);
+                state.keyState[li] = true;
+                playTapSound();
+                if (state.isPlaying) handleInput(li);
+            }
+        }
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        const li = activeTouches.get(touch.identifier);
+        if (li !== undefined) {
+            activeTouches.delete(touch.identifier);
+            state.keyState[li] = false;
+            if (state.isPlaying && !state.isPaused) releaseHoldNote(li);
+        }
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchcancel', e => {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        const li = activeTouches.get(touch.identifier);
+        if (li !== undefined) {
+            activeTouches.delete(touch.identifier);
+            state.keyState[li] = false;
+            if (state.isPlaying && !state.isPaused) releaseHoldNote(li);
         }
     }
 }, { passive: false });
@@ -1076,45 +1241,6 @@ function spawnParticles(x, y, color, count) {
 }
 
 // ==========================================
-// GEARS
-// ==========================================
-function initGears() {
-    const gearCount = getQualityPreset().gearCount;
-    state.gears = Array.from({ length: gearCount }, () => ({
-        x:     Math.random() * window.innerWidth,
-        y:     Math.random() * window.innerHeight,
-        r:     40 + Math.random() * 100,
-        speed: (Math.random() - 0.5) * 0.005,
-        angle: Math.random() * Math.PI * 2,
-        color: Math.random() > 0.5 ? 'rgba(184,115,51,0.09)' : 'rgba(181,166,66,0.09)',
-        teeth: 6 + Math.floor(Math.random() * 6),
-    }));
-}
-
-function drawGear(g) {
-    ctx.save();
-    ctx.translate(g.x, g.y);
-    ctx.rotate(g.angle);
-    ctx.fillStyle = g.color;
-    ctx.beginPath();
-    ctx.arc(0, 0, g.r, 0, Math.PI * 2);
-    for (let i = 0; i < g.teeth; i++) {
-        const a = (i / g.teeth) * Math.PI * 2;
-        ctx.rect(
-            Math.cos(a) * g.r * 0.9 - g.r * 0.12,
-            Math.sin(a) * g.r * 0.9 - g.r * 0.12,
-            g.r * 0.24, g.r * 0.24
-        );
-    }
-    ctx.fill();
-    ctx.fillStyle = config.colors.bg;
-    ctx.beginPath();
-    ctx.arc(0, 0, g.r * 0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-}
-
-// ==========================================
 // MAIN GAME LOOP
 // ==========================================
 function gameLoop() {
@@ -1152,14 +1278,6 @@ function gameLoop() {
             ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2); ctx.fill();
         });
         ctx.globalAlpha = 1;
-    }
-
-    // ── Gears ──
-    if (state.visualQuality === 'high') {
-        state.gears.forEach(g => {
-            if (!state.isPaused) g.angle += g.speed;
-            drawGear(g);
-        });
     }
 
     // ── Gameplay ──
@@ -1216,9 +1334,128 @@ function gameLoop() {
 
         // Notes
         state.notes.forEach(note => {
-            if (note.hit) return;
-            const yPos = targetY - (note.time - currentTime) * speed;
-            const xPos = startX + note.lane * laneWidth + laneWidth / 2;
+            if (note.hit && !note.holdActive) return;
+
+            const headY = targetY - (note.time - currentTime) * speed;
+            const xPos  = startX + note.lane * laneWidth + laneWidth / 2;
+
+            // ═══════════════════════════════
+            // ロングノーツ描画
+            // ═══════════════════════════════
+            if (note.type === 'hold') {
+                const tailY = targetY - (note.holdEnd - currentTime) * speed;
+
+                // 自動完成チェック（最後まで押し続けた）
+                if (note.holdActive && currentTime >= note.holdEnd) {
+                    note.hit       = true;
+                    note.holdActive = false;
+                    state.holdNotes[note.lane] = null;
+                    state.judgeCounts.perfect++;
+                    state.score += 1000 + state.combo * 10;
+                    playPerfectSound();
+                    showJudgement('PERFECT', '#ff00ff');
+                    state.shockwaves.push({ x: xPos, y: targetY, life: 1.0, color: '#ff00ff' });
+                    spawnParticles(xPos, targetY, '#ff00ff', 30);
+                    updateHUD();
+                    return;
+                }
+
+                // ミスチェック（押されないままヘッドが通過）
+                if (!note.holdActive && !note.missed && headY > targetY + 30) {
+                    note.missed = true;
+                    state.holdNotes[note.lane] = null;
+                    state.combo = 0;
+                    state.judgeCounts.miss++;
+                    showJudgement('MISS', '#ff0044');
+                    showMissFlash();
+                    updateHUD();
+                    return;
+                }
+                if (note.missed) return;
+
+                // 画面外チェック
+                const barBottom = note.holdActive ? targetY : headY;
+                if (tailY > canvas.height + 50 || barBottom < -50) return;
+
+                const barLeft  = xPos - laneWidth * 0.19;
+                const barWidth = laneWidth * 0.38;
+                const barTop   = Math.max(tailY, -10);
+                const barBtm   = Math.min(barBottom, canvas.height + 10);
+
+                const hColor     = note.holdActive ? '#cc44ff' : '#00f3ff';
+                const hColorRgba = note.holdActive ? 'rgba(204,68,255,' : 'rgba(0,243,255,';
+
+                if (barBtm > barTop) {
+                    // グラデーションバー
+                    if (state.visualQuality === 'high') { ctx.shadowBlur = 18; ctx.shadowColor = hColor; }
+                    const grad = ctx.createLinearGradient(0, barTop, 0, barBtm);
+                    grad.addColorStop(0, hColorRgba + '0.20)');
+                    grad.addColorStop(1, hColorRgba + '0.75)');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(barLeft, barTop, barWidth, barBtm - barTop);
+
+                    // サイドボーダー
+                    ctx.strokeStyle = hColor;
+                    ctx.lineWidth   = note.holdActive ? 2.5 : 1.5;
+                    ctx.globalAlpha = note.holdActive ? 1.0 : 0.65;
+                    ctx.strokeRect(barLeft, barTop, barWidth, barBtm - barTop);
+                    ctx.globalAlpha = 1;
+                    ctx.shadowBlur  = 0;
+                }
+
+                // テール端キャップ（画面内のみ）
+                if (tailY > -50 && tailY < canvas.height + 50) {
+                    if (state.visualQuality === 'high') { ctx.shadowBlur = 10; ctx.shadowColor = hColor; }
+                    ctx.beginPath();
+                    ctx.arc(xPos, tailY, laneWidth * 0.14, 0, Math.PI * 2);
+                    ctx.fillStyle = note.holdActive ? '#cc44ff' : '#0099bb';
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+
+                // ヘッドサークル（未アクティブ時のみ描画）
+                if (!note.holdActive && headY > -50 && headY < canvas.height + 50) {
+                    if (state.visualQuality === 'high') {
+                        const trailCount = 4;
+                        for (let t = 1; t <= trailCount; t++) {
+                            const r = laneWidth * (0.21 - t * 0.025);
+                            if (r <= 0) continue;
+                            ctx.globalAlpha = (5 - t) / 14;
+                            ctx.beginPath(); ctx.arc(xPos, headY - t * 10, r, 0, Math.PI * 2);
+                            ctx.fillStyle = '#00f3ff'; ctx.fill();
+                        }
+                        ctx.globalAlpha = 1;
+                        ctx.shadowBlur = 18; ctx.shadowColor = '#00f3ff';
+                    }
+                    ctx.beginPath(); ctx.arc(xPos, headY, laneWidth * 0.31, 0, Math.PI * 2);
+                    ctx.fillStyle = config.colors.noteBorder; ctx.fill();
+                    ctx.beginPath(); ctx.arc(xPos, headY, laneWidth * 0.20, 0, Math.PI * 2);
+                    ctx.fillStyle = '#00f3ff'; ctx.fill();
+                    // ハイライト
+                    ctx.beginPath(); ctx.arc(xPos - laneWidth*0.06, headY - laneWidth*0.06, laneWidth*0.07, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+
+                // アクティブホールド: ターゲットライン付近のグロウ
+                if (note.holdActive) {
+                    ctx.fillStyle = 'rgba(204,68,255,0.10)';
+                    ctx.fillRect(startX + note.lane * laneWidth, 0, laneWidth, targetY);
+                    if (state.visualQuality === 'high') { ctx.shadowBlur = 24; ctx.shadowColor = '#cc44ff'; }
+                    ctx.beginPath();
+                    ctx.arc(xPos, targetY, laneWidth * 0.30, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(204,68,255,0.45)';
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+
+                return;
+            }
+
+            // ═══════════════════════════════
+            // タップノーツ描画（既存）
+            // ═══════════════════════════════
+            const yPos = headY;
 
             if (yPos > canvas.height + 50 && !note.missed) {
                 note.missed = true;
